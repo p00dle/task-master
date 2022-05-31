@@ -1,0 +1,57 @@
+{
+  "name": "@kksiuda/task-master",
+  "version": "0.2.0",
+  "description": "Task manager for ETL with HTTP session support",
+  "main": "./dist/index.js",
+  "author": "Krzysztof Siuda",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/p00dle/task-master"
+  },
+  "homepage": "https://github.com/p00dle/task-master#readme",
+  "bugs": {
+    "url": "https://github.com/p00dle/task-master/issues"
+  },
+  "private": false,
+  "devDependencies": {
+    "@swc-node/jest": "^1.5.2",
+    "@swc-node/register": "^1.5.1",
+    "@types/express": "^4.17.13",
+    "@types/jest": "^27.5.0",
+    "@types/node": "^17.0.31",
+    "@types/node-cron": "^3.0.1",
+    "@typescript-eslint/eslint-plugin": "^5.21.0",
+    "@typescript-eslint/parser": "^5.21.0",
+    "eslint": "^8.14.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-n": "^15.2.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "jest": "^28.1.0",
+    "prettier": "^2.6.2",
+    "typescript": "^4.6.4"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "jest",
+    "validate": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "pre-build": "tsc --noemit && eslint . --ext .ts && prettier --write . && jest",
+    "dist": "tsc"
+  },
+  "dependencies": {
+    "@kksiuda/csv": "^0.9.9",
+    "@kksiuda/http-session": "^0.9.32",
+    "@kksiuda/logger": "^0.2.4",
+    "express": "^4.18.1",
+    "node-cron": "^3.0.0"
+  }
+}
