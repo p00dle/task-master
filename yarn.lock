@@ -566,10 +566,10 @@
   resolved "https://registry.yarnpkg.com/@kksiuda/csv/-/csv-0.9.9.tgz#447fcdbfea4f887e68b1e1ba0416663b31c058f3"
   integrity sha512-CI2VV3Y6ZWzCsQk30GgkM5MZa5P5dEiGpLcvBrR65cSc71TVmRuq+nmpxIVa1AyJQEgZG63YESEXgeHI9+zydA==
 
-"@kksiuda/http-session@^0.9.38":
-  version "0.9.38"
-  resolved "https://registry.yarnpkg.com/@kksiuda/http-session/-/http-session-0.9.38.tgz#8e133d894afcaf4a1ff66a2b0b3bd5aab6ddac19"
-  integrity sha512-WXm2GyE/qE4Vqt0r/O9ylTQgfOZVONONazmGsGR+XwVJLZwv3XxZAy8IHjb+zm4fCmGR1xB6jogCPBYGZ5OONg==
+"@kksiuda/http-session@^0.9.39":
+  version "0.9.39"
+  resolved "https://registry.yarnpkg.com/@kksiuda/http-session/-/http-session-0.9.39.tgz#a397c8e80dc121fd9bb7f39df6e033799db78804"
+  integrity sha512-BuzqLZpqjkh7kgKmIPoOwA1HPRp3VWwC6vG2b8wjYgQc1rYXdzmf6pH5SaKBGHVpK8IfqJGoWPP89kIc2o3Jhg==
 
 "@kksiuda/logger@^0.2.4":
   version "0.2.4"
