@@ -1,17 +1,13 @@
 import type { TaskerOptions } from './types/tasker';
 import { Tasker } from './tasker';
-import { TaskerConfig } from './tasker-config';
+import { Task } from './task';
+import { DataApi } from './data-api';
+import { Session } from './sessions';
+import { Credentials } from './credentials';
 
 export const tasker = {
-  run: (config: TaskerConfig, options?: 'manual' | 'prod' | 'debug' | TaskerOptions) => new Tasker(config, options),
-  config: () => new TaskerConfig(),
+  start: (tasks: Task<any, any, any>[], options?: 'manual' | 'prod' | 'debug' | TaskerOptions) =>
+    new Tasker(tasks, options),
 };
 
-/*
-- add proper namespacing to logger / fix status change logging
-- add logger to deps in api
-- api deps need to be defined when used
-- fix the depth problem; maybe remove TDEPS ? - got better after removing typing from runnner
-- session seems to be getting +2 on queue every time a task is used; maybe not released?
-
-*/
+export { Task, DataApi, Session, Credentials };

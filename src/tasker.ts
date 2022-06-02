@@ -1,10 +1,8 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { StatusTypeListener, TaskerOptions, TaskerStatus } from './types/tasker';
 import type { LogStore } from './log-store';
 import type { Unsubscribe } from './types/unsubscribe';
 import type { CredentialsData } from './types/credentials';
-import type { TaskerConfig } from './tasker-config';
-import type { SessionDeps } from './types/session';
-import type { DataApiDeps } from './types/data-api';
 
 import { UtilityClass } from './lib/UtilityClass';
 import { Credentials } from './credentials';
@@ -27,10 +25,10 @@ export class Tasker extends UtilityClass<TaskerStatus> {
 
   protected credentials = {} as Record<string, Credentials>;
   protected dependencies = {} as Record<string, any>;
-  protected sessions = {} as Record<string, Session>;
-  protected sources = {} as Record<string, DataApi>;
-  protected targets = {} as Record<string, DataApi>;
-  protected tasks = {} as Record<string, Task>;
+  protected sessions = {} as Record<string, Session<any, any, any>>;
+  protected sources = {} as Record<string, DataApi<any, any>>;
+  protected targets = {} as Record<string, DataApi<any, any>>;
+  protected tasks = {} as Record<string, Task<any, any, any>>;
   protected statusTypeListeners = [] as StatusTypeListener<any>[];
   protected status: TaskerStatus;
   protected dumpLogsOnExitToFilename: string | null;
@@ -39,7 +37,7 @@ export class Tasker extends UtilityClass<TaskerStatus> {
   protected logStatusChanges: boolean;
   protected guiServer: http.Server | null = null;
 
-  constructor(config: TaskerConfig, options?: 'manual' | 'prod' | 'debug' | TaskerOptions) {
+  constructor(tasks: Task<any, any, any>[], options?: 'manual' | 'prod' | 'debug' | TaskerOptions) {
     super();
     const params = normalizeTaskerOptions(options);
     this.dumpLogsOnExitToFilename = params.dumpLogsOnExitToFilename;
@@ -56,7 +54,8 @@ export class Tasker extends UtilityClass<TaskerStatus> {
       tasks: [],
     };
     this.guiServer = createGuiServer(params, this);
-    this.importConfig(config);
+    for (const task of tasks) this.registerTask(task);
+    this.registerListeners();
   }
 
   public onPartialStatus<K extends keyof TaskerStatus>(typeListener: StatusTypeListener<K>): Unsubscribe {
@@ -113,10 +112,6 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     }
   }
 
-  public runTaskOnce(name: string, params: any): Promise<unknown> {
-    return this.tasks[name as string].execute(params);
-  }
-
   public invalidateSession(name?: string) {
     if (name) {
       return this.sessions[name].invalidateSession();
@@ -129,63 +124,65 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     this.credentials[name].setCredentials(credentials);
   }
 
-  protected importConfig(taskerConfig: TaskerConfig) {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore TaskerConfig#serialize should only be used here, hence why it is protected
-    const config = taskerConfig.serialize();
-
-    for (const [name, envVars] of Object.entries(config.credentials)) {
-      const logger = this.logger.namespace('Credentials').namespace(name);
-      this.credentials[name] = new Credentials(name, envVars, logger);
-    }
-
-    for (const [name, dep] of Object.entries(config.dependencies)) {
-      this.dependencies[name] = dep;
-    }
-
-    for (const [name, { deps, opts }] of Object.entries(config.sessions)) {
-      const getDependencies = async (): Promise<SessionDeps> => {
-        const output: SessionDeps = {};
-        if (deps.credentials) {
-          output.credentials = this.credentials[deps.credentials].getCredentials();
-          output.validateCredentials = (valid) => this.credentials[deps.credentials].setValid(valid);
-        }
-        if (deps.parent) {
-          output.parentSession = await this.sessions[deps.parent].requestSession();
-        }
-        return output;
-      };
-      const logger = this.logger.namespace('Session').namespace(name);
-      this.sessions[name] = new Session(name, opts, getDependencies, logger, this.logHttpRequests);
-    }
-
-    for (const type of ['sources', 'targets'] as const) {
-      for (const [name, { deps, opts }] of Object.entries(config[type])) {
-        const getDependencies = async (): Promise<DataApiDeps> => {
-          const output: DataApiDeps = {};
-          if (deps.dependencies) {
-            output.dependencies = {};
-            for (const dep of deps.dependencies) {
-              output.dependencies[dep] = this.dependencies[dep];
-            }
-          }
-          if (deps.session) {
-            output.session = await this.sessions[deps.session].requestSession();
-          }
-          return output;
-        };
-        const logger = this.logger.namespace(type === 'sources' ? 'Source' : 'Target').namespace(name);
-        this[type][name] = new DataApi(name, opts, getDependencies, logger);
+  protected registerTask(task: Task<any, any, any>) {
+    if (this.tasks[task.name]) {
+      if (this.tasks[task.name] !== task) {
+        throw TypeError(`Unable to register more than one task under same name "${task.name}"`);
       }
     }
-
-    for (const [name, { opts, steps }] of Object.entries(config.tasks)) {
-      const logger = this.logger.namespace('Task').namespace(name);
-      this.tasks[name] = new Task(name, opts, steps, this.sources, this.targets, this.dependencies, logger);
+    this.tasks[task.name] = task;
+    task.register(this.logger.namespace('Task').namespace(task.name));
+    if (task.sources) {
+      for (const api of Object.values(task.sources) as DataApi<any, any>[]) {
+        this.registerApi('sources', api);
+      }
     }
+    if (task.targets) {
+      for (const api of Object.values(task.targets) as DataApi<any, any>[]) {
+        this.registerApi('targets', api);
+      }
+    }
+  }
 
+  protected registerApi(type: 'sources' | 'targets', api: DataApi<any, any>) {
+    if (this[type][api.name]) {
+      if (this[type][api.name] !== api) {
+        throw TypeError(
+          `Unable to register more than one ${type === 'sources' ? 'source' : 'target'} under same name: "${api.name}"`
+        );
+      }
+    }
+    this[type][api.name] = api;
+    api.register(this.logger.namespace(type === 'sources' ? 'Source' : 'Target').namespace(api.name));
+    if (api.deps.session) this.registerSession(api.deps.session);
+  }
+
+  protected registerSession(session: Session<any, any, any>) {
+    if (this.sessions[session.name]) {
+      if (this.sessions[session.name] !== session) {
+        throw TypeError(`Unable to register more than one session under same name "${session.name}"`);
+      }
+    }
+    this.sessions[session.name] = session;
+    session.register(this.logger.namespace('Session').namespace(session.name), this.logHttpRequests);
+    if (session.deps.parentSession) this.registerSession(session.deps.parentSession);
+    // @ts-ignore invalid typing; no time to fix; works fine in intellisense
+    if (session.deps.credentials) this.registerCredentials(session.deps.credentials);
+  }
+
+  protected registerCredentials(creds: Credentials) {
+    if (this.credentials[creds.name]) {
+      if (this.credentials[creds.name] !== creds) {
+        throw TypeError(`Unable to register more than one credentials under same name "${creds.name}"`);
+      }
+    }
+    this.credentials[creds.name] = creds;
+    creds.register(this.logger.namespace('Credentials').namespace(creds.name));
+  }
+
+  protected registerListeners() {
     for (const type of ['credentials', 'sessions', 'sources', 'targets', 'tasks'] as const) {
-      for (const name of Object.keys(config[type])) {
+      for (const name of Object.keys(this[type])) {
         this[type][name].onStatus((status) => {
           if (this.logStatusChanges && this[type][name].status !== undefined) {
             const currStatus = status.status;

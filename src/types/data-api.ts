@@ -1,18 +1,23 @@
-import type { SessionObject } from './session';
+import type { Session } from '../sessions';
+import { TaskerLogger } from './logger';
+import { HttpSessionObject } from './session';
 
-export type DataApiDeps<S = any, D = any> = { session?: SessionObject<S>; dependencies?: D };
-export type DataApiFunc<S, D, A, T> = (dependencies: DataApiDeps<S, D>, args: A) => Promise<T>;
-export type DataApiOptions<S = any, D = any> = Record<string, DataApiFunc<S, D, any, any>>;
+export type DataApiDeps<S> = { session?: Session<S, any, any> };
+export type DataApiFunc<S, A, T> = (
+  dependencies: { log: TaskerLogger; session: HttpSessionObject<S> },
+  args: A
+) => Promise<T>;
+export type DataApiOptions<S> = Record<string, DataApiFunc<S, any, any>>;
 
-export interface DataApiStatus {
+export interface DataApiStatus<T> {
   name: string;
   status: 'In Use' | 'Ready';
   inQueue: number;
-  lastUpdated: Record<string, number | null>;
-  lastTouched: Record<string, number | null>;
+  lastUpdated: Record<keyof T, number | null>;
+  lastTouched: Record<keyof T, number | null>;
 }
 
-export interface DataApiDepsOptions<S = any, D = any> {
+export interface DataApiDepsOptions<S, D> {
   session?: S;
   dependencies?: D[];
 }

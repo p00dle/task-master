@@ -140,4 +140,5 @@ export function normalizeTaskerOptions(
       if (options.logs[key] !== undefined) output[outputKey] = options.logs[key] as any;
     }
   }
+  return output;
 }

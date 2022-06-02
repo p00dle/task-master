@@ -1,64 +1,75 @@
-import type { DataApiOptions } from './data-api';
+import type { DataApi } from '../data-api';
 import type { TaskerLogger } from './logger';
 
-export interface TaskDeps {
-  s: Record<string, DataApiOptions>;
-  t: Record<string, DataApiOptions>;
-  d: Record<string, any>;
-}
+export type DataApiType<T extends DataApi<any, any>> = T extends DataApi<any, infer X> ? X : never;
+export type DataApiParam<T extends DataApi<any, any>, P extends keyof DataApiType<T>> = DataApiType<T>[P] extends (
+  a: any,
+  b: infer X
+) => any
+  ? X
+  : never;
+export type DataApiReturn<T extends DataApi<any, any>, P extends keyof DataApiType<T>> = DataApiType<T>[P] extends (
+  a: any,
+  b: any
+) => infer X
+  ? X
+  : never;
 
-export interface StepTaskArg<D extends TaskDeps = TaskDeps> {
-  setTargetLastUpdated: <N extends keyof D['t'], P extends keyof D['t'][N]>(
+export interface StepTaskArg<
+  S extends Record<string, DataApi<any, any>>,
+  T extends Record<string, DataApi<any, any>>,
+  L
+> {
+  state: L;
+  setTargetLastUpdated: <N extends keyof T, P extends keyof DataApiType<T[N]>>(
     dataSourceName: N,
     path: P,
     date: number | null
   ) => void;
-  setSourceLastUpdated: <N extends keyof D['s'], P extends keyof D['s'][N]>(
+  setSourceLastUpdated: <N extends keyof S, P extends keyof DataApiType<S[N]>>(
     dataSourceName: N,
     path: P,
     date: number | null
   ) => void;
-  getTargetLastUpdated: <N extends keyof D['t'], P extends keyof D['t'][N]>(
+  getTargetLastUpdated: <N extends keyof T, P extends keyof DataApiType<T[N]>>(
     dataSourceName: N,
     path: P
   ) => number | null;
-  getSourceLastUpdated: <N extends keyof D['s'], P extends keyof D['s'][N]>(
+  getSourceLastUpdated: <N extends keyof S, P extends keyof DataApiType<S[N]>>(
     dataSourceName: N,
     path: P
   ) => number | null;
-  getFromSource: <N extends keyof D['s'], P extends keyof D['s'][N]>(
+  getFromSource: <N extends keyof S, P extends keyof DataApiType<S[N]>>(
     source: N,
     path: P,
-    params: Parameters<D['s'][N][P]>[1]
-  ) => ReturnType<D['s'][N][P]>;
-  sendToTarget: <N extends keyof D['t'], P extends keyof D['t'][N]>(
+    params: DataApiParam<S[N], P>
+  ) => DataApiReturn<S[N], P>;
+  sendToTarget: <N extends keyof T, P extends keyof DataApiType<T[N]>>(
     target: N,
     path: P,
-    params: Parameters<D['t'][N][P]>[1]
-  ) => ReturnType<D['t'][N][P]>;
+    params: DataApiParam<T[N], P>
+  ) => DataApiReturn<T[N], P>;
   abort: symbol;
   retry: symbol;
   continue: symbol;
   finish: symbol;
   log: TaskerLogger;
-  dependencies: D['d'];
   retries: number;
   waitFor: <T>(promise: Promise<T>) => Promise<T>;
 }
 
-export type StepFn<D extends TaskDeps = TaskDeps, P = any, R = any> = (task: StepTaskArg<D>, params: P) => Promise<R>;
+export type StepFn<S extends Record<string, DataApi<any, any>>, T extends Record<string, DataApi<any, any>>, L> = (
+  task: StepTaskArg<S, T, L>
+) => Promise<void | symbol>;
 
 export interface TaskOptions<
-  DAS extends Record<string, DataApiOptions> = any,
-  DAT extends Record<string, DataApiOptions> = any,
-  DEPS extends Record<string, any> = any,
-  S extends keyof DAS = any,
-  T extends keyof DAT = any,
-  D extends keyof DEPS = any
+  S extends Record<string, DataApi<any, any>>,
+  T extends Record<string, DataApi<any, any>>,
+  L
 > {
-  sources?: S[];
-  targets?: T[];
-  dependencies?: D[];
+  sources?: S;
+  targets?: T;
+  state?: L;
   schedule?: string;
   interval?: number;
   continueInterval?: number;
