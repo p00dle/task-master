@@ -28,6 +28,7 @@ export interface TaskerOptions {
         console?: boolean;
         store?: boolean;
         logHttpRequests?: boolean;
+        logStatusChanges?: boolean;
         level?: 'debug' | 'info' | 'warn' | 'error';
         consumer?: LogConsumer<{ message: string; details?: string }>;
         useArchive?: boolean;
@@ -54,6 +55,7 @@ export interface NormalizedTaskerOptions {
   longPollTimeout: number;
   shouldLog: boolean;
   logsFilename: string;
+  logStatusChanges: boolean;
   logConsole: boolean;
   useLogStore: boolean;
   logHttpRequests: boolean;

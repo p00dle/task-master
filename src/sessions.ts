@@ -6,13 +6,14 @@ import { noOpLogger } from './lib/noOpLogger';
 import { UtilityClass } from './lib/UtilityClass';
 
 export class Session extends UtilityClass<SessionStatus> {
+  public status: SessionStatus = {} as SessionStatus;
   protected session: HttpSession;
-  protected status: SessionStatus = {} as SessionStatus;
+
   constructor(
     protected name: string,
     sessionOptions: SessionOptions,
     protected getDependencies: () => Promise<SessionDeps>,
-    protected logger: TaskerLogger,
+    public logger: TaskerLogger,
     logHttpRequests: boolean
   ) {
     super();
@@ -36,7 +37,9 @@ export class Session extends UtilityClass<SessionStatus> {
     const session = await this.session.requestSession(timeoutMs, () => {
       if (parentSession && !parentSession.wasReleased) parentSession.release();
     });
-    if (validateCredentials) validateCredentials(this.status.status === 'Ready' || this.status.status === 'In Use');
+    if (validateCredentials) {
+      validateCredentials(this.status.isLoggedIn);
+    }
     return session;
   }
 

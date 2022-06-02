@@ -5,15 +5,16 @@ import { CredentialsData, CredentialsListener, CredentialsStatus, EnvVars } from
 export class Credentials extends UtilityClass<CredentialsStatus> {
   protected username: string | null = null;
   protected password: string | null = null;
-  protected status: CredentialsStatus;
+  public status: CredentialsStatus;
   protected areCredentialsValid: boolean | null = null;
   protected listeners: CredentialsListener[] = [];
 
-  constructor(protected name: string, protected envVars: EnvVars, protected logger: TaskerLogger) {
+  constructor(protected name: string, protected envVars: EnvVars, public logger: TaskerLogger) {
     super();
     if (envVars.username) this.username = process.env[envVars.username] || null;
     if (envVars.password) this.password = process.env[envVars.password] || null;
     this.status = {
+      status: this.username !== null && this.password !== null ? 'Provided' : 'Not Provided',
       name: this.name,
       username: this.username,
       hasPassword: this.password !== null,
@@ -29,11 +30,18 @@ export class Credentials extends UtilityClass<CredentialsStatus> {
     this.username = username;
     this.password = password;
     this.logger.debug('Credentials set for user: ' + username);
-    this.changeStatus({ username, hasPassword: typeof password === 'string' && password.length > 0, valid: null });
+    this.changeStatus({
+      status: 'Provided',
+      username,
+      hasPassword: typeof password === 'string' && password.length > 0,
+      valid: null,
+    });
   }
 
   public setValid(valid: boolean) {
-    this.logger.debug(valid ? 'Valid credentials' : 'Invalid credentials');
-    this.changeStatus({ valid });
+    if (this.status.valid !== valid) {
+      this.logger.debug(valid ? 'Valid credentials' : 'Invalid credentials');
+    }
+    this.changeStatus({ status: valid ? 'Valid' : 'Invalid', valid });
   }
 }

@@ -13,8 +13,9 @@ export abstract class UtilityClass<S> {
     return () => this.emitter.off('status-change', listener);
   }
   protected changeStatus(status: Partial<S>) {
-    this.status = merge(this.status, status);
-    this.emitter.emit('status-change', this.status);
+    const newStatus = merge(this.status, status);
+    this.emitter.emit('status-change', newStatus);
+    this.status = newStatus;
   }
   private timeouts: { handle: NodeJS.Timeout; cb: () => any; callOnClearAll: boolean }[] = [];
   protected setTimeout(cb: () => any, ms: number, callOnClearAll = true): CancelTimeout {

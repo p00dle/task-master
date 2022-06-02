@@ -13,14 +13,16 @@ const CONTINUE = Symbol('continue');
 const FINISH = Symbol('finish');
 
 export class Task extends UtilityClass<TaskStatus> {
+  public status: TaskStatus;
   protected cronTask: ScheduledTask | null = null;
   protected interval: number | null = null;
   protected continueInterval: number | null = null;
-  protected status: TaskStatus;
   protected useInterval = false;
   protected intervalTimeoutHandle: NodeJS.Timeout | null = null;
   protected retry = 0;
   protected forcedStop = false;
+  protected isOneOff: boolean;
+  protected rejectPromises: (() => any)[] = [];
 
   protected stepParams: StepTaskArg = {
     setTargetLastUpdated: (target: string, path: string, date: number | null) =>
@@ -41,9 +43,6 @@ export class Task extends UtilityClass<TaskStatus> {
     waitFor: (promise) => this.waitForPromise(promise),
   };
 
-  protected isOneOff: boolean;
-  protected rejectPromises: (() => any)[] = [];
-
   constructor(
     protected name: string,
     { schedule, interval, continueInterval, retry }: TaskOptions,
@@ -51,7 +50,7 @@ export class Task extends UtilityClass<TaskStatus> {
     protected sources: Record<string, DataApi>,
     protected targets: Record<string, DataApi>,
     protected dependencies: Record<string, any>,
-    protected logger: TaskerLogger
+    public logger: TaskerLogger
   ) {
     super();
     const isScheduleStr = typeof schedule === 'string';
@@ -73,7 +72,7 @@ export class Task extends UtilityClass<TaskStatus> {
     this.isOneOff = !isScheduleStr && !isintervalNum;
     this.status = {
       name: this.name,
-      status: 'ready',
+      status: 'Ready',
       step: null,
       lastExecuted: null,
       lastError: null,
@@ -82,7 +81,7 @@ export class Task extends UtilityClass<TaskStatus> {
   }
 
   public async forceStop() {
-    if (this.status.status === 'running') {
+    if (this.status.status === 'Running') {
       this.logger.debug('Forcing task to stop');
     } else {
     }
@@ -93,13 +92,13 @@ export class Task extends UtilityClass<TaskStatus> {
       clearTimeout(this.intervalTimeoutHandle);
     }
     this.forcedStop = true;
-    this.changeStatus({ status: this.status.status === 'running' ? 'stopping' : 'stopped' });
+    this.changeStatus({ status: this.status.status === 'Running' ? 'Stopping' : 'Stopped' });
     this.rejectPromises.forEach((fn) => fn());
     this.rejectPromises = [];
   }
 
   public forceStart() {
-    if (this.status.status !== 'running') {
+    if (this.status.status !== 'Running') {
       if (this.cronTask) {
         this.cronTask.start();
       }
@@ -118,24 +117,19 @@ export class Task extends UtilityClass<TaskStatus> {
       clearTimeout(this.intervalTimeoutHandle);
     }
     this.logger.debug('Task started');
-    this.changeStatus({ status: 'running', step: null, lastError: null, error: null });
-    const output = await asyncRetry(
-      () => this.runSteps(params),
-      this.retry,
-      // (message, details) => this.logger.error({ message, details })
-      (message, details) => console.error({ message, details, 'via-console-error': true })
-    );
-    if (this.status.status === 'error') {
+    this.changeStatus({ status: 'Running', step: null, lastError: null, error: null });
+    const output = await asyncRetry(() => this.runSteps(params), this.retry, this.logger.error.bind(this.logger));
+    if (this.status.status === 'Error') {
       this.logger.debug('Task failed');
     } else {
       this.changeStatus({
         status: this.forcedStop
-          ? 'stopped'
+          ? 'Stopped'
           : this.useInterval || !!this.cronTask
-          ? 'scheduled'
+          ? 'Scheduled'
           : output === FINISH
-          ? 'completed'
-          : 'ready',
+          ? 'Completed'
+          : 'Ready',
         step: null,
         lastExecuted: Date.now(),
         lastError: null,
@@ -175,7 +169,7 @@ export class Task extends UtilityClass<TaskStatus> {
         } catch (err) {
           const [message, details] = parseError(err);
           this.logger.error(message, details);
-          this.changeStatus({ status: 'error', lastError: Date.now(), error: message });
+          this.changeStatus({ status: 'Error', lastError: Date.now(), error: message });
           break allStepLoop;
         }
         this.stepParams.retries++;

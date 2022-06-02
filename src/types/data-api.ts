@@ -6,6 +6,8 @@ export type DataApiOptions<S = any, D = any> = Record<string, DataApiFunc<S, D, 
 
 export interface DataApiStatus {
   name: string;
+  status: 'In Use' | 'Ready';
+  inQueue: number;
   lastUpdated: Record<string, number | null>;
   lastTouched: Record<string, number | null>;
 }

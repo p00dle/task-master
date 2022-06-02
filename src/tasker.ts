@@ -36,6 +36,7 @@ export class Tasker extends UtilityClass<TaskerStatus> {
   protected dumpLogsOnExitToFilename: string | null;
   protected logHttpRequests: boolean;
   protected forceStartTasks: boolean;
+  protected logStatusChanges: boolean;
   protected guiServer: http.Server | null = null;
 
   constructor(config: TaskerConfig, options?: 'manual' | 'prod' | 'debug' | TaskerOptions) {
@@ -44,6 +45,7 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     this.dumpLogsOnExitToFilename = params.dumpLogsOnExitToFilename;
     this.forceStartTasks = params.forceStartTasks;
     this.logHttpRequests = params.logHttpRequests;
+    this.logStatusChanges = params.logStatusChanges;
     const [logStore, logger] = getLogStoreLogger(params);
     this.logStore = logStore;
     this.logger = logger;
@@ -133,7 +135,8 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     const config = taskerConfig.serialize();
 
     for (const [name, envVars] of Object.entries(config.credentials)) {
-      this.credentials[name] = new Credentials(name, envVars, this.logger);
+      const logger = this.logger.namespace('Credentials').namespace(name);
+      this.credentials[name] = new Credentials(name, envVars, logger);
     }
 
     for (const [name, dep] of Object.entries(config.dependencies)) {
@@ -152,7 +155,8 @@ export class Tasker extends UtilityClass<TaskerStatus> {
         }
         return output;
       };
-      this.sessions[name] = new Session(name, opts, getDependencies, this.logger, this.logHttpRequests);
+      const logger = this.logger.namespace('Session').namespace(name);
+      this.sessions[name] = new Session(name, opts, getDependencies, logger, this.logHttpRequests);
     }
 
     for (const type of ['sources', 'targets'] as const) {
@@ -170,17 +174,29 @@ export class Tasker extends UtilityClass<TaskerStatus> {
           }
           return output;
         };
-        this[type][name] = new DataApi(name, opts, getDependencies, this.logger);
+        const logger = this.logger.namespace(type === 'sources' ? 'Source' : 'Target').namespace(name);
+        this[type][name] = new DataApi(name, opts, getDependencies, logger);
       }
     }
 
     for (const [name, { opts, steps }] of Object.entries(config.tasks)) {
-      this.tasks[name] = new Task(name, opts, steps, this.sources, this.targets, this.dependencies, this.logger);
+      const logger = this.logger.namespace('Task').namespace(name);
+      this.tasks[name] = new Task(name, opts, steps, this.sources, this.targets, this.dependencies, logger);
     }
 
     for (const type of ['credentials', 'sessions', 'sources', 'targets', 'tasks'] as const) {
       for (const name of Object.keys(config[type])) {
         this[type][name].onStatus((status) => {
+          if (this.logStatusChanges && this[type][name].status !== undefined) {
+            const currStatus = status.status;
+            const prevStatus = this[type][name].status.status;
+            if (currStatus !== prevStatus) {
+              this[type][name].logger.debug(
+                `Status: ${prevStatus} > ${currStatus}`,
+                JSON.stringify({ ...status, type }, null, 2)
+              );
+            }
+          }
           const isApi = type === 'sources' || type === 'targets';
           if (isApi) {
             status.apiType = type === 'sources' ? 'source' : 'target';

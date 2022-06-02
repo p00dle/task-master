@@ -67,7 +67,7 @@ export interface TaskOptions<
 
 export interface TaskStatus {
   name: string;
-  status: 'ready' | 'running' | 'stopping' | 'error' | 'scheduled' | 'completed' | 'stopped';
+  status: 'Ready' | 'Running' | 'Stopping' | 'Error' | 'Scheduled' | 'Completed' | 'Stopped';
   step: string | null;
   lastExecuted: number | null;
   lastError: number | null;

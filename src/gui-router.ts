@@ -102,7 +102,6 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
     tasker.onPartialStatus({
       type,
       listener: (newData) => {
-        console.log({ type, newData });
         lastUpdated[type] = Date.now();
         data[type] = newData as any[];
         if (!forceStop) {
