@@ -1,6 +1,6 @@
 import { createStringifyCsvStream, CsvColumns } from '@kksiuda/csv';
 import { Readable } from 'node:stream';
-import { Unsubscribe } from './types';
+import { Unsubscribe } from './types/unsubscribe';
 
 type Level = 'debug' | 'info' | 'warn' | 'error';
 
@@ -47,6 +47,15 @@ const csvColumns: CsvColumns<Log> = [
   { prop: 'details', type: 'string', csvProp: 'Details' },
 ];
 
+interface LogStoreOptions {
+  useArchive: boolean;
+  archiveLogsAfterMs: number;
+  retainArchivedLogs: boolean;
+  archiveLogsIntervalMs: number;
+  memoryLimitMb: number;
+  memoryPurgeRatio: number;
+}
+
 export class LogStore {
   protected archivedLogs: Log[] = [];
   protected logs: Log[] = [];
@@ -55,18 +64,27 @@ export class LogStore {
   protected archivedLogsSize: number[] = [];
   protected logsSize: number[] = [];
   protected totalSize = 0;
+  protected useArchive: boolean;
+  protected archiveAfterMs: number;
+  protected retainArchivedLogs: boolean;
+  protected archiveIntervalMs: number;
   protected memoryLimit: number;
   protected memoryPurgeTo: number;
-  constructor(
-    protected useArchive: boolean,
-    protected archiveAfterMs: number,
-    protected retainArchivedLogs: boolean,
-    protected archiveIntervalMs: number,
-    memoryLimit: number,
-    memoryPurgeRatio: number
-  ) {
-    if (useArchive) this.archiveTimeout = setTimeout(() => this.archiveLogs(), archiveIntervalMs);
-    this.memoryLimit = memoryLimit * 1024 * 1024;
+  constructor(options: LogStoreOptions) {
+    const {
+      useArchive,
+      archiveLogsAfterMs,
+      retainArchivedLogs,
+      archiveLogsIntervalMs,
+      memoryLimitMb,
+      memoryPurgeRatio,
+    } = options;
+    this.useArchive = useArchive;
+    this.archiveAfterMs = archiveLogsAfterMs;
+    this.retainArchivedLogs = retainArchivedLogs;
+    this.archiveIntervalMs = archiveLogsIntervalMs;
+    if (useArchive) this.archiveTimeout = setTimeout(() => this.archiveLogs(), archiveLogsIntervalMs);
+    this.memoryLimit = memoryLimitMb * 1024 * 1024;
     this.memoryPurgeTo = (this.memoryLimit * memoryPurgeRatio) | 0;
   }
 
@@ -184,7 +202,14 @@ export class NoOpLogStore extends LogStore {
   protected retainArchivedLogs = false;
   protected archiveIntervalMs = 0;
   constructor() {
-    super(false, 0, false, 0, 0, 0);
+    super({
+      useArchive: false,
+      archiveLogsAfterMs: 0,
+      retainArchivedLogs: false,
+      archiveLogsIntervalMs: 0,
+      memoryLimitMb: 0,
+      memoryPurgeRatio: 0,
+    });
   }
   public get(): Log[] {
     return [];

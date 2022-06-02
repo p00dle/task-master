@@ -1,17 +1,17 @@
 {
-  "name": "@kksiuda/task-master",
-  "version": "0.2.0",
-  "description": "Task manager for ETL with HTTP session support",
+  "name": "@kksiuda/tasker",
+  "version": "0.2.1",
+  "description": "Task framework for ETL with HTTP session support",
   "main": "./dist/index.js",
   "author": "Krzysztof Siuda",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/p00dle/task-master"
+    "url": "git+https://github.com/p00dle/tasker"
   },
-  "homepage": "https://github.com/p00dle/task-master#readme",
+  "homepage": "https://github.com/p00dle/tasker#readme",
   "bugs": {
-    "url": "https://github.com/p00dle/task-master/issues"
+    "url": "https://github.com/p00dle/tasker/issues"
   },
   "private": false,
   "devDependencies": {
@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@kksiuda/csv": "^0.9.9",
-    "@kksiuda/http-session": "^0.9.32",
+    "@kksiuda/http-session": "^0.9.38",
     "@kksiuda/logger": "^0.2.4",
     "express": "^4.18.1",
     "node-cron": "^3.0.0"

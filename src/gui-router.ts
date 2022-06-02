@@ -1,9 +1,11 @@
-import { EventEmitter, Readable } from 'node:stream';
+import { EventEmitter } from 'node:stream';
 import { Express, Request, Response, NextFunction } from 'express';
 import express from 'express';
-import { Unsubscribe } from './types';
 import { readFileSync } from 'node:fs';
 import * as path from 'path';
+import { Tasker } from './tasker';
+import { TaskerStatus } from './types/tasker';
+import { Unsubscribe } from './types/unsubscribe';
 function setCsvResponseMiddlewareFactory(filename: string) {
   return (_req: any, res: Response, next: NextFunction) => {
     res.setHeader('Content-Type', 'text/csv');
@@ -24,23 +26,7 @@ function allowOnlyLocalConnection(req: Request, res: Response, next: NextFunctio
 }
 
 interface CreateGuiRouterParams {
-  logStore: {
-    get: (params: { limit: number; namespace?: string; logLevel?: 'debug' | 'info' | 'warn' | 'error' }) => any;
-    subscribe: (
-      params: { limit: number; namespace?: string; logLevel?: 'debug' | 'info' | 'warn' | 'error' },
-      listener: (data: any) => any
-    ) => Unsubscribe;
-    getCsvStream: () => Readable;
-  };
-  subscribeToStatusChange: (
-    type: 'credentials' | 'dataSources' | 'tasks' | 'sessions',
-    listener: (data: any) => any
-  ) => Unsubscribe;
-  shutdown: () => Promise<void>;
-  onSetCredential: (name: string, username: string, password: string) => any;
-  onInvalidateSession: (name?: string) => any;
-  onStartTask: (name?: string) => any;
-  onForceStopTask: (name?: string) => any;
+  tasker: Tasker;
   logsFilename: string;
   localConnectionsOnly: boolean;
   longPollTimeout: number;
@@ -54,57 +40,46 @@ function getLogStoreParamsFromRequest(req: Request) {
   };
 }
 
-type DataPart = 'credentials' | 'sessions' | 'dataSources' | 'tasks';
+type DataPart = keyof TaskerStatus;
 
 export function createGuiRouter(params: CreateGuiRouterParams): Express {
-  const {
-    localConnectionsOnly,
-    logsFilename,
-    logStore,
-    subscribeToStatusChange,
-    longPollTimeout,
-    shutdown,
-    onStartTask,
-    onForceStopTask,
-    onInvalidateSession,
-    onSetCredential,
-  } = params;
+  const { tasker, localConnectionsOnly, logsFilename, longPollTimeout } = params;
   const router = express();
   if (localConnectionsOnly) {
     router.use(allowOnlyLocalConnection);
   }
   router.use(express.json());
-  router.use(express.static(path.join(__dirname, 'gui')));
+  router.use(express.static(path.join(__dirname, '../gui')));
   router.set('etag', false);
   router.get('/api/download-logs', setCsvResponseMiddlewareFactory(logsFilename || 'logs'), (_, res) =>
-    logStore.getCsvStream().pipe(res)
+    tasker.logStore.getCsvStream().pipe(res)
   );
 
-  const data: any = {
+  const data: TaskerStatus = {
     credentials: [],
     sessions: [],
-    dataSources: [],
+    apis: [],
     tasks: [],
   };
-  const lastUpdated = {
+  const lastUpdated: Record<DataPart, number> = {
     credentials: Date.now(),
     sessions: Date.now(),
-    dataSources: Date.now(),
+    apis: Date.now(),
     tasks: Date.now(),
   };
   let logsLastUpdated = Date.now();
 
-  const spaHtml = readFileSync(__dirname + '/gui/index.html', { encoding: 'utf8' });
+  const spaHtml = readFileSync(path.join(__dirname, '../gui/index.html'), { encoding: 'utf8' });
   router.get('/', (_req, res) => res.end(spaHtml));
   router.get('/credentials', (_req, res) => res.end(spaHtml));
   router.get('/tasks', (_req, res) => res.end(spaHtml));
-  router.get('/data-sources', (_req, res) => res.end(spaHtml));
+  router.get('/apis', (_req, res) => res.end(spaHtml));
   router.get('/sessions', (_req, res) => res.end(spaHtml));
   router.get('/logs', (_req, res) => res.end(spaHtml));
 
   let forceStop = false;
   const dataChangeEventEmitter = new EventEmitter();
-  function onDataChange(type: string, cb: (data: any) => any) {
+  function onDataChange(type: DataPart, cb: (data: any) => any) {
     const listener = () => cb(data[type]);
     dataChangeEventEmitter.once(type, listener);
     return () => dataChangeEventEmitter.off(type, listener);
@@ -120,23 +95,23 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
       clearTimeout(handle);
     };
   }
-  const unsubscribers: Unsubscribe[] = [];
-  unsubscribers.push(
-    logStore.subscribe({ limit: 0 }, () => {
-      logsLastUpdated = Date.now();
-    })
-  );
-  for (const type of ['sessions', 'tasks', 'dataSources', 'credentials'] as const) {
-    unsubscribers.push(
-      subscribeToStatusChange(type, (newData) => {
+  tasker.logStore.subscribe({ limit: 0 }, () => {
+    logsLastUpdated = Date.now();
+  });
+  for (const type of ['sessions', 'tasks', 'apis', 'credentials'] as const) {
+    tasker.onPartialStatus({
+      type,
+      listener: (newData) => {
+        console.log({ type, newData });
         lastUpdated[type] = Date.now();
-        data[type] = newData;
+        data[type] = newData as any[];
         if (!forceStop) {
           dataChangeEventEmitter.emit(type, newData);
         }
-      })
-    );
+      },
+    });
   }
+
   function longPoll(dataPart: DataPart) {
     return (req: Request, res: Response) => {
       const clientLastUpdate = req.query['last-updated'] ? parseInt(req.query['last-updated'] as string, 10) : null;
@@ -149,7 +124,6 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
       let settled = false;
       const clearSafeTimeout = setSafeTimeout(onData, longPollTimeout);
       const unsubscribe = onDataChange(dataPart, onData);
-      unsubscribers.push(unsubscribe);
       function onData() {
         if (forceStop) {
           settled = true;
@@ -157,8 +131,7 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
         }
         if (!settled) {
           settled = true;
-          const unsubscribeIndex = unsubscribers.findIndex((fn) => fn === unsubscribe);
-          if (unsubscribeIndex >= 0) unsubscribers.splice(unsubscribeIndex, 1);
+          unsubscribe();
           clearSafeTimeout();
           unsubscribe();
           res.json({
@@ -171,7 +144,7 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
   }
   router.get('/api/credentials', longPoll('credentials'));
   router.get('/api/sessions', longPoll('sessions'));
-  router.get('/api/data-sources', longPoll('dataSources'));
+  router.get('/api/apis', longPoll('apis'));
   router.get('/api/tasks', longPoll('tasks'));
   router.get('/api/shutdown', (_req, res) => {
     forceStop = true;
@@ -179,8 +152,7 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
       clearTimeout(handle);
       cb();
     }
-    for (const unsubscribe of unsubscribers) unsubscribe();
-    shutdown();
+    tasker.shutdown();
     res.statusCode = 200;
     res.end();
   });
@@ -188,7 +160,7 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
     '/api/logs',
     (req, res, next) => {
       if (req.query['long-poll'] === 'false') {
-        res.json(logStore.get(getLogStoreParamsFromRequest(req)));
+        res.json(tasker.logStore.get(getLogStoreParamsFromRequest(req)));
       } else {
         next();
       }
@@ -199,13 +171,12 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
       if (!clientLastUpdate || clientLastUpdate < logsLastUpdated) {
         return res.json({
           lastUpdated: logsLastUpdated,
-          data: logStore.get(logParams),
+          data: tasker.logStore.get(logParams),
         });
       }
       let settled = false;
       const clearSafeTimeout = setSafeTimeout(() => onData(), longPollTimeout);
-      const unsubscribe = logStore.subscribe(logParams, onData);
-      unsubscribers.push(unsubscribe);
+      const unsubscribe = tasker.logStore.subscribe(logParams, onData);
       function onData(logs?: any[]) {
         if (forceStop) {
           settled = true;
@@ -213,13 +184,12 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
         }
         if (!settled) {
           settled = true;
-          const unsubscribeIndex = unsubscribers.findIndex((fn) => fn === unsubscribe);
-          if (unsubscribeIndex >= 0) unsubscribers.splice(unsubscribeIndex, 1);
+          unsubscribe();
           clearSafeTimeout();
           unsubscribe();
           res.json({
             lastUpdated: logsLastUpdated,
-            data: logs || logStore.get(logParams),
+            data: logs || tasker.logStore.get(logParams),
           });
         }
       }
@@ -229,23 +199,23 @@ export function createGuiRouter(params: CreateGuiRouterParams): Express {
     const isStop = req.query.command === 'stop';
     const taskName = req.query.name as string | undefined;
     if (isStop) {
-      onForceStopTask(taskName);
+      tasker.stopTask(taskName);
     } else {
-      onStartTask(taskName);
+      tasker.startTask(taskName);
     }
     res.statusCode = 200;
     res.end();
   });
   router.post('/api/sessions', (req, res) => {
     const sessionName = req.query.name as string | undefined;
-    onInvalidateSession(sessionName);
+    tasker.invalidateSession(sessionName);
     res.statusCode = 200;
     res.end();
   });
   router.post('/api/credentials', (req, res) => {
     const username = req.body[`${req.body.name}_username`];
     const password = req.body[`${req.body.name}_password`];
-    onSetCredential(req.body.name, username, password);
+    tasker.setCredentials(req.body.name, { username, password });
     res.statusCode = 200;
     res.end();
   });
