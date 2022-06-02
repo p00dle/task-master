@@ -11,7 +11,7 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
   public logger: TaskerLogger = noOpLogger;
   public deps: SessionDeps<P, C>;
   protected session: HttpSession<S, any> | null = null;
-  protected parentSessionMap = new Map<symbol, HttpSessionObject>();
+  protected parentSessionMap = new Map<symbol, HttpSessionObject<any>>();
   constructor(
     public name: string,
     dependencies: SessionDeps<P, C>,

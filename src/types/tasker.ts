@@ -1,13 +1,13 @@
 import type { LogConsumer } from '@kksiuda/logger';
 import type { CredentialsStatus } from './credentials';
 import type { DataApiStatus } from './data-api';
-import type { SessionStatus } from './session';
+import type { HttpSessionStatusData } from './session';
 import type { TaskStatus } from './task';
 
 export interface TaskerStatus {
   credentials: CredentialsStatus[];
-  sessions: SessionStatus[];
-  apis: (DataApiStatus & { type: 'source' | 'target' })[];
+  sessions: HttpSessionStatusData[];
+  apis: (DataApiStatus<any> & { type: 'source' | 'target' })[];
   tasks: TaskStatus[];
 }
 
