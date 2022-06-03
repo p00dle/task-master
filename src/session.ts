@@ -86,6 +86,10 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
     return session;
   }
 
+  public setState(state: Partial<S>) {
+    this.session.setState(state);
+  }
+
   public invalidateSession() {
     if (!this.session) return;
     this.logger.debug('Session forced to invalidate');
