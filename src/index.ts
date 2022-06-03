@@ -1,8 +1,8 @@
-import type { TaskerOptions } from './types/tasker';
+import type { TaskerOptions } from './types/tasker-options';
 import { Tasker } from './tasker';
 import { Task } from './task';
 import { DataApi } from './data-api';
-import { Session } from './sessions';
+import { Session } from './session';
 import { Credentials } from './credentials';
 
 export const tasker = {

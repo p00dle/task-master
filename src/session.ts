@@ -1,4 +1,9 @@
-import type { HttpSessionOptions, HttpSessionStatusData, HttpSessionObject, SessionDeps } from './types/session';
+import type {
+  HttpSessionOptions,
+  HttpSessionStatusData,
+  HttpSessionObject,
+  HttpSessionSerializedData,
+} from '@kksiuda/http-session';
 import type { TaskerLogger } from './types/logger';
 
 import { HttpSession } from '@kksiuda/http-session';
@@ -6,23 +11,34 @@ import { noOpLogger } from './lib/noOpLogger';
 import { UtilityClass } from './lib/UtilityClass';
 import { Credentials } from './credentials';
 
+export type { HttpSessionOptions, HttpSessionStatusData, HttpSessionObject, HttpSessionSerializedData };
+
+export interface SessionOptions<S, P, C extends Credentials | void> {
+  name: string;
+  parentSession?: Session<P, any, any>;
+  credentials?: C;
+  params?: HttpSessionOptions<
+    S,
+    (P extends void ? unknown : { parentSession: HttpSessionObject<P> }) &
+      (C extends void ? unknown : { username: string | null; password: string | null })
+  >;
+}
+
 export class Session<S, P, C extends Credentials | void> extends UtilityClass<HttpSessionStatusData> {
+  public name: string;
   public status: HttpSessionStatusData = {} as HttpSessionStatusData;
   public logger: TaskerLogger = noOpLogger;
-  public deps: SessionDeps<P, C>;
+  public parentSession: Session<P, any, any>;
+  public credentials: C;
   protected session: HttpSession<S, any> | null = null;
+  protected sessionOptions: HttpSessionOptions<S, any>;
   protected parentSessionMap = new Map<symbol, HttpSessionObject<any>>();
-  constructor(
-    public name: string,
-    dependencies: SessionDeps<P, C>,
-    protected sessionOptions: HttpSessionOptions<
-      S,
-      (P extends void ? unknown : { parentSession: HttpSessionObject<P> }) &
-        (C extends void ? unknown : { username: string | null; password: string | null })
-    >
-  ) {
+  constructor(options: SessionOptions<S, P, C>) {
     super();
-    this.deps = dependencies;
+    this.name = options.name;
+    this.parentSession = options.parentSession;
+    this.credentials = options.credentials;
+    this.sessionOptions = options.params;
   }
 
   public register(logger: TaskerLogger, logHttpRequests: boolean) {
@@ -51,8 +67,8 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
     const session = await this.session.requestSession({
       ref,
       beforeRequest: async (ref: symbol) => {
-        if (this.deps.parentSession) {
-          const parentSession = await this.deps.parentSession.requestSession();
+        if (this.parentSession) {
+          const parentSession = await this.parentSession.requestSession();
           this.parentSessionMap.set(ref, parentSession);
         }
       },
@@ -64,8 +80,8 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
         }
       },
     });
-    if (this.deps.credentials) {
-      this.deps.credentials.setValid(this.status.isLoggedIn);
+    if (this.credentials) {
+      this.credentials.setValid(this.status.isLoggedIn);
     }
     return session;
   }
@@ -78,11 +94,11 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
 
   protected async enhanceLoginMethods(ref: symbol) {
     const output: any = {};
-    if (this.deps.parentSession) {
+    if (this.parentSession) {
       output.parentSession = this.parentSessionMap.get(ref);
     }
-    if (this.deps.credentials) {
-      const credentials = this.deps.credentials.getCredentials();
+    if (this.credentials) {
+      const credentials = this.credentials.getCredentials();
       output.username = credentials.username;
       output.password = credentials.password;
     }

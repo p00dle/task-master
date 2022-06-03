@@ -1,15 +1,4 @@
 import type { LogConsumer } from '@kksiuda/logger';
-import type { CredentialsStatus } from './credentials';
-import type { DataApiStatus } from './data-api';
-import type { HttpSessionStatusData } from './session';
-import type { TaskStatus } from './task';
-
-export interface TaskerStatus {
-  credentials: CredentialsStatus[];
-  sessions: HttpSessionStatusData[];
-  apis: (DataApiStatus<any> & { type: 'source' | 'target' })[];
-  tasks: TaskStatus[];
-}
 
 export interface TaskerOptions {
   autostartTasks?: boolean;
@@ -39,11 +28,6 @@ export interface TaskerOptions {
         memoryPurgeRatio?: number;
         dumpLogsOnExitToFilename?: string;
       };
-}
-
-export interface StatusTypeListener<K extends keyof TaskerStatus> {
-  type: K;
-  listener: (data: TaskerStatus[K]) => any;
 }
 
 export interface NormalizedTaskerOptions {

@@ -1,17 +1,40 @@
 import type { TaskerLogger } from './types/logger';
-import type { DataApiDeps, DataApiFunc, DataApiOptions, DataApiStatus } from './types/data-api';
+import type { HttpSessionObject, Session } from './session';
 import { UtilityClass } from './lib/UtilityClass';
 import { noOpLogger } from './lib/noOpLogger';
-import { HttpSessionObject } from './types/session';
 
-export class DataApi<S, T extends DataApiOptions<S>> extends UtilityClass<DataApiStatus<T>> {
+export type DataApiFunc<S, A, T> = (
+  dependencies: { log: TaskerLogger; session: HttpSessionObject<S> },
+  args: A
+) => Promise<T>;
+
+export interface DataApiStatus<T> {
+  name: string;
+  status: 'In Use' | 'Ready';
+  inQueue: number;
+  lastUpdated: Record<keyof T, number | null>;
+  lastTouched: Record<keyof T, number | null>;
+}
+
+export interface DataApiOptions<S, T extends Record<string, DataApiFunc<S, any, any>>> {
+  name: string;
+  session?: Session<S, any, any>;
+  api: T;
+}
+
+export class DataApi<S, T extends Record<string, DataApiFunc<S, any, any>>> extends UtilityClass<DataApiStatus<T>> {
+  public name: string;
   public status: DataApiStatus<T>;
   public logger: TaskerLogger = noOpLogger;
-  public deps: DataApiDeps<S>;
-  constructor(public name: string, dependencies: DataApiDeps<S>, protected api: T) {
+  public session: Session<S, any, any>;
+  protected api: T;
+  constructor(options: DataApiOptions<S, T>) {
     super();
+    this.name = options.name;
+    this.session = options.session;
+    this.api = options.api;
     this.status = {
-      name,
+      name: this.name,
       lastTouched: {} as Record<keyof T, number | null>,
       lastUpdated: {} as Record<keyof T, number | null>,
       status: 'Ready',
@@ -21,7 +44,6 @@ export class DataApi<S, T extends DataApiOptions<S>> extends UtilityClass<DataAp
       this.status.lastTouched[apiName] = null;
       this.status.lastUpdated[apiName] = null;
     }
-    this.deps = dependencies;
   }
 
   public register(logger: TaskerLogger) {
@@ -42,7 +64,7 @@ export class DataApi<S, T extends DataApiOptions<S>> extends UtilityClass<DataAp
     let session: HttpSessionObject<S> = null;
     let err: any = null;
     try {
-      if (this.deps.session) session = await this.deps.session.requestSession();
+      if (this.session) session = await this.session.requestSession();
       this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
       return await this.api[path]({ log: this.logger, session }, params);
     } catch (error) {

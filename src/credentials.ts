@@ -1,29 +1,48 @@
 import type { TaskerLogger } from './types/logger';
 import { UtilityClass } from './lib/UtilityClass';
-import { CredentialsData, CredentialsStatus, EnvVars } from './types/credentials';
 import { noOpLogger } from './lib/noOpLogger';
 
+export type CredentialsData = { username: string | null; password: string | null };
+
+export interface CredentialsStatus {
+  status: 'Not Provided' | 'Provided' | 'Valid' | 'Invalid';
+  name: string;
+  username: string | null;
+  valid: boolean | null;
+  hasPassword: boolean;
+}
+
+export interface CredentialsOptions {
+  name: string;
+  envUsername?: string;
+  envPassword?: string;
+}
+
 export class Credentials extends UtilityClass<CredentialsStatus> {
+  public name: string;
   public status: CredentialsStatus;
   public logger: TaskerLogger = noOpLogger;
   protected credentials: CredentialsData = { username: null, password: null };
-  protected password: string | null = null;
-
-  constructor(public name: string, protected envVars: EnvVars = {}) {
+  protected envUsername: string | undefined;
+  protected envPassword: string | undefined;
+  constructor(options: CredentialsOptions) {
     super();
+    this.name = options.name;
+    this.envUsername = options.envUsername;
+    this.envPassword = options.envPassword;
     this.status = {
       status: 'Not Provided',
       name: this.name,
       username: this.credentials.username,
-      hasPassword: this.password !== null,
+      hasPassword: false,
       valid: null,
     };
   }
 
   public register(logger: TaskerLogger) {
     this.logger = logger;
-    if (this.envVars.username) this.credentials.username = process.env[this.envVars.username] || null;
-    if (this.envVars.password) this.credentials.password = process.env[this.envVars.password] || null;
+    if (this.envUsername) this.credentials.username = process.env[this.envUsername] || null;
+    if (this.envPassword) this.credentials.password = process.env[this.envPassword] || null;
   }
 
   public getCredentials(): CredentialsData {

@@ -1,4 +1,4 @@
-import type { NormalizedTaskerOptions, TaskerOptions } from './types/tasker';
+import type { NormalizedTaskerOptions, TaskerOptions } from './types/tasker-options';
 
 const DEFAULT_OPTIONS: NormalizedTaskerOptions = {
   forceStartTasks: false,

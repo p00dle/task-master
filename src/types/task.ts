@@ -67,6 +67,8 @@ export interface TaskOptions<
   T extends Record<string, DataApi<any, any>>,
   L
 > {
+  name: string;
+  steps: StepFn<S, T, L>[];
   sources?: S;
   targets?: T;
   state?: L;

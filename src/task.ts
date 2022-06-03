@@ -20,10 +20,12 @@ export class Task<
   T extends Record<string, DataApi<any, any>>,
   L
 > extends UtilityClass<TaskStatus> {
+  public name: string;
   public status: TaskStatus;
   public logger: TaskerLogger = noOpLogger;
   public targets: T;
   public sources: S;
+  protected steps: StepFn<S, T, L>[];
   protected cronTask: ScheduledTask | null = null;
   protected interval: number | null = null;
   protected continueInterval: number | null = null;
@@ -53,9 +55,11 @@ export class Task<
     waitFor: (promise) => this.waitForPromise(promise),
   };
 
-  constructor(public name: string, options: TaskOptions<S, T, L>, protected steps: StepFn<S, T, L>[]) {
+  constructor(options: TaskOptions<S, T, L>) {
     super();
     const { schedule, interval, continueInterval, retry } = options;
+    this.name = options.name;
+    this.steps = options.steps;
     this.sources = options.sources;
     this.targets = options.targets;
     const isScheduleStr = typeof schedule === 'string';
@@ -73,7 +77,6 @@ export class Task<
     this.useInterval = isintervalNum;
     if (isConIntervalNum) this.continueInterval = continueInterval;
     if (isRetryNum) this.retry = retry;
-    this.steps = steps;
     this.isOneOff = !isScheduleStr && !isintervalNum;
     this.status = {
       name: this.name,

@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import type { StatusTypeListener, TaskerOptions, TaskerStatus } from './types/tasker';
 import type { LogStore } from './log-store';
 import type { Unsubscribe } from './types/unsubscribe';
-import type { CredentialsData } from './types/credentials';
+import type { CredentialsData, CredentialsStatus } from './credentials';
 
 import { UtilityClass } from './lib/UtilityClass';
 import { Credentials } from './credentials';
-import { Session } from './sessions';
-import { DataApi } from './data-api';
+import { HttpSessionStatusData, Session } from './session';
+import { DataApi, DataApiStatus } from './data-api';
 import { Task } from './task';
 import { TaskerLogger } from './types/logger';
 import * as http from 'http';
@@ -17,6 +16,20 @@ import { createWriteStream } from 'node:fs';
 import { asyncPipeline } from './lib/asyncPipeline';
 import { errorCallBackPromise } from './lib/errorCallbackPromise';
 import { createGuiServer } from './gui-server';
+import { TaskStatus } from './types/task';
+import { TaskerOptions } from './types/tasker-options';
+
+export interface TaskerStatus {
+  credentials: CredentialsStatus[];
+  sessions: HttpSessionStatusData[];
+  apis: (DataApiStatus<any> & { type: 'source' | 'target' })[];
+  tasks: TaskStatus[];
+}
+
+export interface StatusTypeListener<K extends keyof TaskerStatus> {
+  type: K;
+  listener: (data: TaskerStatus[K]) => any;
+}
 
 export class Tasker extends UtilityClass<TaskerStatus> {
   public logStore: LogStore;
@@ -154,7 +167,7 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     }
     this[type][api.name] = api;
     api.register(this.logger.namespace(type === 'sources' ? 'Source' : 'Target').namespace(api.name));
-    if (api.deps.session) this.registerSession(api.deps.session);
+    if (api.session) this.registerSession(api.session);
   }
 
   protected registerSession(session: Session<any, any, any>) {
@@ -165,9 +178,9 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     }
     this.sessions[session.name] = session;
     session.register(this.logger.namespace('Session').namespace(session.name), this.logHttpRequests);
-    if (session.deps.parentSession) this.registerSession(session.deps.parentSession);
+    if (session.parentSession) this.registerSession(session.parentSession);
     // @ts-ignore invalid typing; no time to fix; works fine in intellisense
-    if (session.deps.credentials) this.registerCredentials(session.deps.credentials);
+    if (session.credentials) this.registerCredentials(session.credentials);
   }
 
   protected registerCredentials(creds: Credentials) {
