@@ -1,19 +1,7 @@
 import type { DataApi } from '../data-api';
 import type { TaskerLogger } from './logger';
 
-export type DataApiType<T extends DataApi<any, any>> = T extends DataApi<any, infer X> ? X : never;
-export type DataApiParam<T extends DataApi<any, any>, P extends keyof DataApiType<T>> = DataApiType<T>[P] extends (
-  a: any,
-  b: infer X
-) => any
-  ? X
-  : never;
-export type DataApiReturn<T extends DataApi<any, any>, P extends keyof DataApiType<T>> = DataApiType<T>[P] extends (
-  a: any,
-  b: any
-) => infer X
-  ? X
-  : never;
+export type DataApiType<T> = T extends { api: infer X } ? X : never;
 
 export interface StepTaskArg<
   S extends Record<string, DataApi<any, any>>,
@@ -39,16 +27,16 @@ export interface StepTaskArg<
     dataSourceName: N,
     path: P
   ) => number | null;
-  getFromSource: <N extends keyof S, P extends keyof DataApiType<S[N]>>(
+  getFromSource: <N extends keyof S, P extends keyof S[N]['api']>(
     source: N,
     path: P,
-    params: DataApiParam<S[N], P>
-  ) => DataApiReturn<S[N], P>;
-  sendToTarget: <N extends keyof T, P extends keyof DataApiType<T[N]>>(
+    params: Parameters<S[N]['api'][P]>[1]
+  ) => ReturnType<S[N]['api'][P]>;
+  sendToTarget: <N extends keyof T, P extends keyof T[N]['api']>(
     target: N,
     path: P,
-    params: DataApiParam<T[N], P>
-  ) => DataApiReturn<T[N], P>;
+    params: Parameters<T[N]['api'][P]>[1]
+  ) => ReturnType<T[N]['api'][P]>;
   abort: symbol;
   retry: symbol;
   continue: symbol;

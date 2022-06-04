@@ -30,6 +30,9 @@ export interface TaskerOptions {
       };
 }
 
+export type TaskerOptionsGuiKey = keyof Exclude<TaskerOptions['gui'], false | undefined>;
+export type TaskerOptionsLogsKey = keyof Exclude<TaskerOptions['logs'], false | undefined>;
+
 export interface NormalizedTaskerOptions {
   forceStartTasks: boolean;
   useGui: boolean;

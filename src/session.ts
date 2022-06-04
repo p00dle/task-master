@@ -13,25 +13,32 @@ import { Credentials } from './credentials';
 
 export type { HttpSessionOptions, HttpSessionStatusData, HttpSessionObject, HttpSessionSerializedData };
 
-export interface SessionOptions<S, P, C extends Credentials | void> {
+export interface SessionOptions<S, P, C> {
   name: string;
-  parentSession?: Session<P, any, any>;
+  parentSession?: P;
   credentials?: C;
   params?: HttpSessionOptions<
     S,
-    (P extends void ? unknown : { parentSession: HttpSessionObject<P> }) &
-      (C extends void ? unknown : { username: string | null; password: string | null })
+    { log: TaskerLogger } & ([P] extends [Session<infer X, any, any>]
+      ? { parentSession: HttpSessionObject<X> }
+      : unknown) &
+      ([C] extends [Credentials] ? { username: string | null; password: string | null } : unknown),
+    { log: TaskerLogger }
   >;
 }
 
-export class Session<S, P, C extends Credentials | void> extends UtilityClass<HttpSessionStatusData> {
+export class Session<
+  S,
+  P extends Session<any, any, any> | void,
+  C extends Credentials | void
+> extends UtilityClass<HttpSessionStatusData> {
   public name: string;
   public status: HttpSessionStatusData = {} as HttpSessionStatusData;
   public logger: TaskerLogger = noOpLogger;
-  public parentSession: Session<P, any, any>;
-  public credentials: C;
-  protected session: HttpSession<S, any> | null = null;
-  protected sessionOptions: HttpSessionOptions<S, any>;
+  public parentSession?: P;
+  public credentials?: C;
+  protected session: HttpSession<S, any, any> | null = null;
+  protected sessionOptions: HttpSessionOptions<S, any, any> | undefined;
   protected parentSessionMap = new Map<symbol, HttpSessionObject<any>>();
   constructor(options: SessionOptions<S, P, C>) {
     super();
@@ -43,10 +50,9 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
 
   public register(logger: TaskerLogger, logHttpRequests: boolean) {
     this.logger = logger;
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore // TODO: need to fix the typings somehow; they work elsewhere but not here
     this.session = new HttpSession({
       enhanceLoginMethods: this.enhanceLoginMethods.bind(this),
+      enhanceLogoutMethods: async () => ({ log: this.logger }),
       logger: logHttpRequests ? this.logger : noOpLogger,
       name: this.name,
       ...this.sessionOptions,
@@ -75,8 +81,10 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
       onRelease: (ref: symbol) => {
         if (this.parentSessionMap.has(ref)) {
           const parentSession = this.parentSessionMap.get(ref);
-          parentSession.release();
-          this.parentSessionMap.delete(ref);
+          if (parentSession) {
+            parentSession.release();
+            this.parentSessionMap.delete(ref);
+          }
         }
       },
     });
@@ -87,7 +95,9 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
   }
 
   public setState(state: Partial<S>) {
-    this.session.setState(state);
+    if (this.session) {
+      this.session.setState(state);
+    }
   }
 
   public invalidateSession() {
@@ -97,7 +107,7 @@ export class Session<S, P, C extends Credentials | void> extends UtilityClass<Ht
   }
 
   protected async enhanceLoginMethods(ref: symbol) {
-    const output: any = {};
+    const output: any = { log: this.logger };
     if (this.parentSession) {
       output.parentSession = this.parentSessionMap.get(ref);
     }

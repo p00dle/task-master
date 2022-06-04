@@ -10,8 +10,8 @@
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": false,
-    "noErrorTruncation": false
+    "strict": true,
+    "noErrorTruncation": true
   },
   "include": ["src/**/*"]
 }

@@ -566,10 +566,10 @@
   resolved "https://registry.yarnpkg.com/@kksiuda/csv/-/csv-0.9.9.tgz#447fcdbfea4f887e68b1e1ba0416663b31c058f3"
   integrity sha512-CI2VV3Y6ZWzCsQk30GgkM5MZa5P5dEiGpLcvBrR65cSc71TVmRuq+nmpxIVa1AyJQEgZG63YESEXgeHI9+zydA==
 
-"@kksiuda/http-session@^0.9.47":
-  version "0.9.47"
-  resolved "https://registry.yarnpkg.com/@kksiuda/http-session/-/http-session-0.9.47.tgz#1230cc06a5fd08bfc35228352a532c8f82b47909"
-  integrity sha512-TuFPOEazha3wIYr3nMHdOk8ZojsTU1GDNEkiU1wNGubjiCqP2n6LHFEud36RAPMT2/t27F6jx/yCQ5qSlapxKg==
+"@kksiuda/http-session@^0.9.49":
+  version "0.9.49"
+  resolved "https://registry.yarnpkg.com/@kksiuda/http-session/-/http-session-0.9.49.tgz#0abffd410e443fcba9a6684358f537c6153b59c9"
+  integrity sha512-nO/uTHnSeNu1Nv3znA1K0XWxgW2nX2pEPmtulJRS3HRKaAUBWhZj7KLlDW2uwkAhuGakf7ZkcAsyRHk4qRO7Zw==
 
 "@kksiuda/logger@^0.2.4":
   version "0.2.4"
@@ -3748,10 +3748,10 @@ type-is@~1.6.18:
     media-typer "0.3.0"
     mime-types "~2.1.24"
 
-typescript@^4.6.4:
-  version "4.7.2"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.7.2.tgz#1f9aa2ceb9af87cca227813b4310fff0b51593c4"
-  integrity sha512-Mamb1iX2FDUpcTRzltPxgWMKy3fhg0TN378ylbktPGPK/99KbDtMQ4W1hwgsbPAsG3a0xKa1vmw4VKZQbkvz5A==
+typescript@^4.7.3:
+  version "4.7.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.7.3.tgz#8364b502d5257b540f9de4c40be84c98e23a129d"
+  integrity sha512-WOkT3XYvrpXx4vMMqlD+8R8R37fZkjyLGlxavMc4iB8lrl8L0DeTcHbYgw/v0N/z9wAFsgBhcsF0ruoySS22mA==
 
 unbox-primitive@^1.0.2:
   version "1.0.2"

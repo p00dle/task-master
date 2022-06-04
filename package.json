@@ -1,6 +1,6 @@
 {
   "name": "@kksiuda/tasker",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Task framework for ETL with HTTP session support",
   "main": "./dist/index.js",
   "author": "Krzysztof Siuda",
@@ -31,7 +31,7 @@
     "eslint-plugin-promise": "^6.0.0",
     "jest": "^28.1.0",
     "prettier": "^2.6.2",
-    "typescript": "^4.6.4"
+    "typescript": "^4.7.3"
   },
   "files": [
     "dist",
@@ -51,7 +51,7 @@
   },
   "dependencies": {
     "@kksiuda/csv": "^0.9.9",
-    "@kksiuda/http-session": "^0.9.47",
+    "@kksiuda/http-session": "^0.9.49",
     "@kksiuda/logger": "^0.2.4",
     "express": "^4.18.1",
     "node-cron": "^3.0.0"

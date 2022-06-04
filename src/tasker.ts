@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { LogStore } from './log-store';
 import type { Unsubscribe } from './types/unsubscribe';
 import type { CredentialsData, CredentialsStatus } from './credentials';
@@ -22,7 +21,7 @@ import { TaskerOptions } from './types/tasker-options';
 export interface TaskerStatus {
   credentials: CredentialsStatus[];
   sessions: HttpSessionStatusData[];
-  apis: (DataApiStatus<any> & { type: 'source' | 'target' })[];
+  apis: (DataApiStatus<any> & { apiType?: 'source' | 'target' })[];
   tasks: TaskStatus[];
 }
 
@@ -179,7 +178,6 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     this.sessions[session.name] = session;
     session.register(this.logger.namespace('Session').namespace(session.name), this.logHttpRequests);
     if (session.parentSession) this.registerSession(session.parentSession);
-    // @ts-ignore invalid typing; no time to fix; works fine in intellisense
     if (session.credentials) this.registerCredentials(session.credentials);
   }
 
@@ -209,14 +207,14 @@ export class Tasker extends UtilityClass<TaskerStatus> {
           }
           const isApi = type === 'sources' || type === 'targets';
           if (isApi) {
-            status.apiType = type === 'sources' ? 'source' : 'target';
+            (status as DataApiStatus<any>).apiType = type === 'sources' ? 'source' : 'target';
           }
           const aliasType = isApi ? 'apis' : type;
           const index = this.status[aliasType].findIndex((x: { name: string }) => x.name === status.name);
           if (index >= 0) {
             this.status[aliasType][index] = status;
           } else {
-            this.status[aliasType].push(status);
+            (this.status[aliasType] as any[]).push(status);
           }
           this.emitter.emit('status-change-' + aliasType, this.status[aliasType]);
         });

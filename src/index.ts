@@ -11,3 +11,8 @@ export const tasker = {
 };
 
 export { Task, DataApi, Session, Credentials };
+
+/*
+TODO:
+- add log to session login and logout
+*/

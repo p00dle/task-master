@@ -16,6 +16,11 @@ describe('e2e', () => {
         async login(session) {
           await new Promise((resolve) => setTimeout(resolve, 30));
           session.setState({ username: session.username, password: session.password });
+          // @ts-expect-error should not have access parentSession
+          session.log.debug(JSON.stringify(session.parentSession));
+        },
+        async logout(session) {
+          session.log.debug('should have access to log');
         },
       },
     });
@@ -29,6 +34,8 @@ describe('e2e', () => {
           await new Promise((resolve) => setTimeout(resolve, 30));
           const { username, password } = session.parentSession.getState();
           session.setState({ username2: username, password2: password });
+          // @ts-expect-error should not have access to credentials
+          session.log.debug(session.username);
         },
       },
     });
@@ -37,9 +44,21 @@ describe('e2e', () => {
       name: 'source1',
       session: sessionChild,
       api: {
-        async getChildState({ session }, arg: number) {
+        async getChildState({ session, log }, arg: number) {
           await new Promise((resolve) => setTimeout(resolve, 30));
+          log.debug('hello');
           return { ...session.getState(), arg };
+        },
+      },
+    });
+
+    const sessionlessSource = new DataApi({
+      name: 'sessionless',
+      api: {
+        async doNothing({ log }, param: boolean) {
+          // @ts-expect-error should not have access to session
+          log.debug(JSON.stringify(session));
+          return 'string ' + param;
         },
       },
     });
@@ -69,7 +88,7 @@ describe('e2e', () => {
     const task = new Task({
       name: 'task',
       state: {} as { src1: any; src2: any },
-      sources: { source1, source2 },
+      sources: { source1, source2, sessionlessSource },
       targets: { target1 },
       steps: [
         async function getSource1(task) {

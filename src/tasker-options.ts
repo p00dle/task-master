@@ -1,4 +1,9 @@
-import type { NormalizedTaskerOptions, TaskerOptions } from './types/tasker-options';
+import type {
+  NormalizedTaskerOptions,
+  TaskerOptions,
+  TaskerOptionsGuiKey,
+  TaskerOptionsLogsKey,
+} from './types/tasker-options';
 
 const DEFAULT_OPTIONS: NormalizedTaskerOptions = {
   forceStartTasks: false,
@@ -96,14 +101,14 @@ const DEBUG_OPTIONS: NormalizedTaskerOptions = {
   dumpLogsOnExitToFilename: null,
 };
 
-const guiOptionsMap: Record<string, keyof NormalizedTaskerOptions> = {
+const guiOptionsMap: Record<TaskerOptionsGuiKey, keyof NormalizedTaskerOptions> = {
   port: 'guiPort',
   openInBrowser: 'openInBrowser',
   localConnectionsOnly: 'localConnectionsOnly',
   longPollTimeout: 'longPollTimeout',
 };
 
-const logOptionsMap: Record<string, keyof NormalizedTaskerOptions> = {
+const logOptionsMap: Record<TaskerOptionsLogsKey, keyof NormalizedTaskerOptions> = {
   filename: 'logsFilename',
   console: 'logConsole',
   store: 'useLogStore',
@@ -130,13 +135,19 @@ export function normalizeTaskerOptions(
   if (options.autostartTasks) output.forceStartTasks = true;
   if (options.gui) {
     output.useGui = true;
-    for (const [key, outputKey] of Object.entries(guiOptionsMap)) {
-      if (options.gui[key] !== undefined) output[outputKey] = options.gui[key] as any;
+    for (const [key, outputKey] of Object.entries(guiOptionsMap) as [
+      TaskerOptionsGuiKey,
+      keyof NormalizedTaskerOptions
+    ][]) {
+      if (options.gui[key] !== undefined) output[outputKey] = options.gui[key];
     }
   }
   if (options.logs) {
     output.shouldLog = true;
-    for (const [key, outputKey] of Object.entries(logOptionsMap)) {
+    for (const [key, outputKey] of Object.entries(logOptionsMap) as [
+      TaskerOptionsLogsKey,
+      keyof NormalizedTaskerOptions
+    ][]) {
       if (options.logs[key] !== undefined) output[outputKey] = options.logs[key] as any;
     }
   }

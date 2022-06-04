@@ -4,7 +4,7 @@ import { UtilityClass } from './lib/UtilityClass';
 import { noOpLogger } from './lib/noOpLogger';
 
 export type DataApiFunc<S, A, T> = (
-  dependencies: { log: TaskerLogger; session: HttpSessionObject<S> },
+  dependencies: [S] extends [void] ? { log: TaskerLogger } : { log: TaskerLogger; session: HttpSessionObject<S> },
   args: A
 ) => Promise<T>;
 
@@ -14,20 +14,30 @@ export interface DataApiStatus<T> {
   inQueue: number;
   lastUpdated: Record<keyof T, number | null>;
   lastTouched: Record<keyof T, number | null>;
+  apiType?: 'source' | 'target';
 }
 
-export interface DataApiOptions<S, T extends Record<string, DataApiFunc<S, any, any>>> {
+type DataApiFuncParams<F> = F extends (deps: any, arg: infer X) => any ? X : never;
+type DataApiFuncReturn<F> = F extends (...args: any[]) => Promise<infer X> ? X : never;
+
+export interface DataApiOptions<S, T extends DataApiOptionsType<S>> {
   name: string;
-  session?: Session<S, any, any>;
+  session?: S;
   api: T;
 }
 
-export class DataApi<S, T extends Record<string, DataApiFunc<S, any, any>>> extends UtilityClass<DataApiStatus<T>> {
+export type DataApiOptionsType<S> = S extends Session<infer X, any, any>
+  ? Record<string, DataApiFunc<X, any, any>>
+  : Record<string, DataApiFunc<void, any, any>>;
+
+export class DataApi<S extends Session<any, any, any>, T extends DataApiOptionsType<S>> extends UtilityClass<
+  DataApiStatus<T>
+> {
   public name: string;
   public status: DataApiStatus<T>;
   public logger: TaskerLogger = noOpLogger;
-  public session: Session<S, any, any>;
-  protected api: T;
+  public session?: S;
+  public api: T;
   constructor(options: DataApiOptions<S, T>) {
     super();
     this.name = options.name;
@@ -57,16 +67,19 @@ export class DataApi<S, T extends Record<string, DataApiFunc<S, any, any>>> exte
     return this.status.lastUpdated[path];
   }
 
-  public async callApi<K extends keyof T>(
-    path: K,
-    params: T[K] extends DataApiFunc<S, infer X, any> ? X : never
-  ): Promise<T[K] extends DataApiFunc<S, any, infer X> ? X : never> {
-    let session: HttpSessionObject<S> = null;
+  public async callApi<K extends keyof T>(path: K, params: DataApiFuncParams<T[K]>): Promise<DataApiFuncReturn<T[K]>> {
+    let session: HttpSessionObject<S> | undefined = undefined;
     let err: any = null;
+    let result: DataApiFuncReturn<T[K]> | undefined = undefined;
     try {
-      if (this.session) session = await this.session.requestSession();
-      this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
-      return await this.api[path]({ log: this.logger, session }, params);
+      if (this.session) {
+        session = await this.session.requestSession();
+        this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
+        result = await this.api[path]({ log: this.logger, session } as unknown as { log: TaskerLogger }, params);
+      } else {
+        this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
+        result = await this.api[path]({ log: this.logger }, params);
+      }
     } catch (error) {
       err = error;
     } finally {
@@ -76,7 +89,8 @@ export class DataApi<S, T extends Record<string, DataApiFunc<S, any, any>>> exte
         inQueue: this.status.inQueue - 1,
         lastTouched: { ...this.status.lastTouched, [path]: Date.now() },
       });
-      if (err) throw err;
     }
+    if (err) throw err;
+    return result as DataApiFuncReturn<T[K]>;
   }
 }
