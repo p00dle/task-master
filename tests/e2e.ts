@@ -1,4 +1,4 @@
-import { Credentials, Session, DataApi, Task, tasker } from '../src';
+import { Credentials, Session, DataApi, Task, MemoryStore, tasker } from '../src';
 import { callBackPromise } from '../src/lib/callbackPromise';
 
 describe('e2e', () => {
@@ -35,14 +35,16 @@ describe('e2e', () => {
           const { username, password } = session.parentSession.getState();
           session.setState({ username2: username, password2: password });
           // @ts-expect-error should not have access to credentials
-          session.log.debug(session.username);
+          session.log.debug('' + session.username);
         },
       },
     });
 
     const source1 = new DataApi({
       name: 'source1',
-      session: sessionChild,
+      dependencies: {
+        session: sessionChild,
+      },
       sources: {
         async getChildState({ session, log }, arg: number) {
           await new Promise((resolve) => setTimeout(resolve, 30));
@@ -65,7 +67,9 @@ describe('e2e', () => {
 
     const source2 = new DataApi({
       name: 'source2',
-      session: sessionParent,
+      dependencies: {
+        session: sessionParent,
+      },
       sources: {
         async getParentState({ session }, arg: boolean) {
           await new Promise((resolve) => setTimeout(resolve, 30));
@@ -74,13 +78,26 @@ describe('e2e', () => {
       },
     });
 
+    const memoryStore = new MemoryStore<{ src1: any; src2: any }>();
+
     const target1 = new DataApi({
       name: 'target1',
-      session: sessionChild,
+      dependencies: {
+        session: sessionChild,
+        store: memoryStore,
+      },
+      sources: {
+        async getStates({ store }) {
+          return {
+            src1: store.get('src1'),
+            src2: store.get('src2'),
+          };
+        },
+      },
       targets: {
-        async uploadStates(_, args: any) {
-          result = args;
-          cb();
+        async uploadStates({ store }, { src1, src2 }: { src1: any; src2: any }) {
+          store.set('src1', src1);
+          store.set('src2', src2);
         },
       },
     });
@@ -88,7 +105,7 @@ describe('e2e', () => {
     const task = new Task({
       name: 'task',
       state: {} as { src1: any; src2: any },
-      sources: { source1, source2, sessionlessSource },
+      sources: { source1, source2, sessionlessSource, target1 },
       targets: { target1 },
       steps: [
         async function getSource1(task) {
@@ -99,6 +116,10 @@ describe('e2e', () => {
         },
         async function uploadTarget1(task) {
           await task.sendToTarget('target1', 'uploadStates', task.state);
+        },
+        async function getFromStore(task) {
+          result = await task.getFromSource('target1', 'getStates', undefined);
+          cb();
         },
       ],
     });
@@ -113,3 +134,46 @@ describe('e2e', () => {
     });
   });
 });
+
+/*
+TODO: 
+  - Credentials
+    - get credentials for environment
+    - setCredentials
+    - setValid(false)
+  - DataApi
+    - (set|get)(Source|Target)LastUpdated (do Task first, should cover it)
+    - call(Source|Target)Api when api is not defined, and when path is not defined
+    - no dependencies
+    - dependency throws an error
+    - more than one consecutive calls to a DataApi
+  - GUI
+    - everything
+  - GUI-server
+    - server throws error before starting
+    - shutdown tasker before server starts
+  - LogStore
+    - everything
+  - logging
+    - everything
+  - Session
+    - logHttpRequests = true
+    - request session before registering
+    - setState
+    - invalidateSession
+    - 
+  - Task
+    - (set|get)(Source|Target)LastUpdated
+    - getFromSourc, sendToTarget try to call undefined
+    - schedule and cron job (forceStop and forceStart)
+    - retry whole task
+    - setState
+    - forceStop, forceStart while task is running
+    - fail task
+    - use return symbols in step; test retrying step
+    - waitForPromise
+  - Tasker-Options
+    - test different options
+  - Tasker
+    - check coverage after GUI, GUI-server, LogStore and logging 
+*/

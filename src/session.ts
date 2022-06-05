@@ -10,6 +10,7 @@ import { HttpSession } from '@kksiuda/http-session';
 import { noOpLogger } from './lib/noOpLogger';
 import { UtilityClass } from './lib/UtilityClass';
 import { Credentials } from './credentials';
+import { Dependency } from './types/dependency';
 
 export type { HttpSessionOptions, HttpSessionStatusData, HttpSessionObject, HttpSessionSerializedData };
 
@@ -27,11 +28,10 @@ export interface SessionOptions<S, P, C> {
   >;
 }
 
-export class Session<
-  S,
-  P extends Session<any, any, any> | void,
-  C extends Credentials | void
-> extends UtilityClass<HttpSessionStatusData> {
+export class Session<S, P extends Session<any, any, any> | void, C extends Credentials | void>
+  extends UtilityClass<HttpSessionStatusData>
+  implements Dependency<HttpSessionObject<S>>
+{
   public name: string;
   public status: HttpSessionStatusData = {} as HttpSessionStatusData;
   public logger: TaskerLogger = noOpLogger;
@@ -61,20 +61,19 @@ export class Session<
   }
 
   public async shutdown() {
-    if (!this.session) return;
     this.logger.debug('Shutting session down');
-    await this.session.shutdown();
+    await (this.session as HttpSession<S, any, any>).shutdown();
     this.logger.debug('Session shutdown');
   }
 
-  public async requestSession() {
+  public async requestResource() {
     if (!this.session) throw new TypeError('Session used before being registered');
     const ref = Symbol('request-session-wrapper-ref');
     const session = await this.session.requestSession({
       ref,
       beforeRequest: async (ref: symbol) => {
         if (this.parentSession) {
-          const parentSession = await this.parentSession.requestSession();
+          const parentSession = await this.parentSession.requestResource();
           this.parentSessionMap.set(ref, parentSession);
         }
       },

@@ -22,7 +22,11 @@ type LogListener = (logs: Log[]) => any;
 
 function getApproximateLogSizeBytes(log: Log): number {
   return (
-    60 + (log.namespace.length + log.message.length + (typeof log.details === 'string' ? log.details.length : 0)) * 2
+    60 +
+    (log.namespace.length +
+      (typeof log.message === 'string' ? log.message.length : 0) +
+      (typeof log.details === 'string' ? log.details.length : 0)) *
+      2
   );
 }
 

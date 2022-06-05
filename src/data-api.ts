@@ -1,11 +1,19 @@
 import type { TaskerLogger } from './types/logger';
-import type { HttpSessionObject, Session } from './session';
 import { UtilityClass } from './lib/UtilityClass';
 import { noOpLogger } from './lib/noOpLogger';
+import { Dependency } from './types/dependency';
 
-type DataApiDeps<S> = [S] extends [void] ? { log: TaskerLogger } : { log: TaskerLogger; session: HttpSessionObject<S> };
+type DependencyTypes<D> = D extends Record<string, Dependency<any>>
+  ? {
+      [K in keyof D]: D[K] extends Dependency<infer X> ? X : never;
+    }
+  : never;
 
-export type DataApiFunc<S, A, T> = (dependencies: DataApiDeps<S>, args: A) => Promise<T>;
+type DataApiDeps<D> = D extends Record<string, Dependency<any>>
+  ? { log: TaskerLogger } & DependencyTypes<D>
+  : { log: TaskerLogger };
+
+export type DataApiFunc<D, A, T> = (dependencies: DataApiDeps<D>, args: A) => Promise<T>;
 
 export interface DataApiStatus<T, T2> {
   name: string;
@@ -20,34 +28,34 @@ export interface DataApiStatus<T, T2> {
 type DataApiFuncParams<F> = F extends (deps: any, arg: infer X) => any ? X : never;
 type DataApiFuncReturn<F> = F extends (...args: any[]) => Promise<infer X> ? X : never;
 
-export interface DataApiOptions<S, T extends DataApiOptionsType<S>, T2 extends DataApiOptionsType<S>> {
+export interface DataApiOptions<D, T extends DataApiOptionsType<D>, T2 extends DataApiOptionsType<D>> {
   name: string;
-  session?: S;
+  dependencies?: D;
   sources?: T;
   targets?: T2;
 }
 
-export type DataApiOptionsType<S> = S extends Session<infer X, any, any>
-  ? Record<string, DataApiFunc<X, any, any>>
+export type DataApiOptionsType<D> = D extends Record<string, Dependency<any>>
+  ? Record<string, DataApiFunc<D, any, any>>
   : Record<string, DataApiFunc<void, any, any>>;
 
 export class DataApi<
-  S extends Session<any, any, any>,
-  T extends DataApiOptionsType<S>,
-  T2 extends DataApiOptionsType<S>
+  D extends Record<string, Dependency<any>>,
+  T extends DataApiOptionsType<D>,
+  T2 extends DataApiOptionsType<D>
 > extends UtilityClass<DataApiStatus<T, T2>> {
   public name: string;
   public status: DataApiStatus<T, T2>;
   public logger: TaskerLogger = noOpLogger;
-  public session?: S;
-  public sources?: T;
-  public targets?: T2;
-  constructor(options: DataApiOptions<S, T, T2>) {
+  public dependencies?: D;
+  public sources: T;
+  public targets: T2;
+  constructor(options: DataApiOptions<D, T, T2>) {
     super();
     this.name = options.name;
-    this.session = options.session;
-    this.sources = options.sources;
-    this.targets = options.targets;
+    this.dependencies = options.dependencies;
+    this.sources = options.sources as T;
+    this.targets = options.targets as T2;
     this.status = {
       name: this.name,
       sourcesLastTouched: {} as Record<keyof T, number | null>,
@@ -110,25 +118,29 @@ export class DataApi<
   protected async callApi<P, R, I extends boolean>(
     isSource: I,
     path: I extends true ? keyof T : keyof T2,
-    apiFn: (deps: DataApiDeps<S>, params: P) => Promise<R>,
+    apiFn: (deps: DataApiDeps<D>, params: P) => Promise<R>,
     params: P
   ): Promise<R> {
-    let session: HttpSessionObject<S> | undefined = undefined;
+    const dependencies = {} as DependencyTypes<D>;
     let err: any = null;
     let result: R | undefined = undefined;
     try {
-      if (this.session) {
-        session = await this.session.requestSession();
+      if (this.dependencies) {
+        for (const dep of Object.keys(this.dependencies) as (keyof D)[]) {
+          dependencies[dep as keyof DependencyTypes<D>] = await this.dependencies[dep].requestResource();
+        }
         this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
-        result = await apiFn({ log: this.logger, session } as DataApiDeps<S>, params);
+        result = await apiFn({ log: this.logger, ...dependencies } as DataApiDeps<D>, params);
       } else {
         this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
-        result = await apiFn({ log: this.logger } as DataApiDeps<S>, params);
+        result = await apiFn({ log: this.logger } as DataApiDeps<D>, params);
       }
     } catch (error) {
       err = error;
     } finally {
-      if (session && !session.wasReleased) session.release();
+      for (const dep of Object.keys(dependencies) as (keyof DependencyTypes<D>)[]) {
+        if (!dependencies[dep].wasReleased) await dependencies[dep].release();
+      }
       if (isSource) {
         this.changeStatus({
           status: this.status.inQueue === 1 ? 'Ready' : 'In Use',

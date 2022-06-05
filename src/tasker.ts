@@ -166,7 +166,11 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     }
     this[type][api.name] = api;
     api.register(this.logger.namespace(type === 'sources' ? 'Source' : 'Target').namespace(api.name));
-    if (api.session) this.registerSession(api.session);
+    if (api.dependencies) {
+      for (const dep of Object.values(api.dependencies)) {
+        if (dep instanceof Session) this.registerSession(dep);
+      }
+    }
   }
 
   protected registerSession(session: Session<any, any, any>) {
