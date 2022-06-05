@@ -16,8 +16,8 @@ const CONTINUE = Symbol('continue');
 const FINISH = Symbol('finish');
 
 export class Task<
-  S extends Record<string, DataApi<any, any>>,
-  T extends Record<string, DataApi<any, any>>,
+  S extends Record<string, DataApi<any, any, any>>,
+  T extends Record<string, DataApi<any, any, any>>,
   L
 > extends UtilityClass<TaskStatus> {
   public name: string;
@@ -41,40 +41,40 @@ export class Task<
     setTargetLastUpdated: (target, path, date) => {
       if (!this.targets || !this.targets[target])
         throw new TypeError(`Target ${String(target)} not provided as a dependency`);
-      this.targets[target].setLastUpdated(path as string, date);
+      this.targets[target].setTargetLastUpdated(path as string, date);
     },
     setSourceLastUpdated: (source, path, date) => {
       if (!this.sources || !this.sources[source])
         throw new TypeError(`Source ${String(source)} not provided as a dependency`);
-      this.sources[source].setLastUpdated(path as string, date);
+      this.sources[source].setSourceLastUpdated(path as string, date);
     },
     getTargetLastUpdated: (target, path) => {
       if (!this.targets || !this.targets[target])
         throw new TypeError(`Target ${String(target)} not provided as a dependency`);
-      return this.targets[target].getLastUpdated(path as string);
+      return this.targets[target].getTargetLastUpdated(path as string);
     },
     getSourceLastUpdated: (source, path) => {
       if (!this.sources || !this.sources[source])
         throw new TypeError(`Source ${String(source)} not provided as a dependency`);
-      return this.sources[source].getLastUpdated(path as string);
+      return this.sources[source].getSourceLastUpdated(path as string);
     },
-    getFromSource: <N extends keyof S, P extends keyof S[N]['api'], X extends Parameters<S[N]['api'][P]>[1]>(
+    getFromSource: <N extends keyof S, P extends keyof S[N]['sources'], X extends Parameters<S[N]['sources'][P]>[1]>(
       source: N,
       path: P,
       params: X
     ) => {
       if (!this.sources || !this.sources[source])
         throw new TypeError(`Source ${String(source)} not provided as a dependency`);
-      return this.sources[source].callApi(path as string, params) as ReturnType<S[N]['api'][P]>;
+      return this.sources[source].callSourceApi(path as string, params) as ReturnType<S[N]['sources'][P]>;
     },
-    sendToTarget: <N extends keyof T, P extends keyof T[N]['api'], X extends Parameters<T[N]['api'][P]>[1]>(
+    sendToTarget: <N extends keyof T, P extends keyof T[N]['targets'], X extends Parameters<T[N]['targets'][P]>[1]>(
       target: N,
       path: P,
       params: X
     ) => {
       if (!this.targets || !this.targets[target])
         throw new TypeError(`Target ${String(target)} not provided as a dependency`);
-      return this.targets[target].callApi(path as string, params) as ReturnType<T[N]['api'][P]>;
+      return this.targets[target].callTargetApi(path as string, params) as ReturnType<T[N]['targets'][P]>;
     },
     abort: ABORT,
     retry: RETRY,

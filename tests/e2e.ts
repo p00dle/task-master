@@ -43,7 +43,7 @@ describe('e2e', () => {
     const source1 = new DataApi({
       name: 'source1',
       session: sessionChild,
-      api: {
+      sources: {
         async getChildState({ session, log }, arg: number) {
           await new Promise((resolve) => setTimeout(resolve, 30));
           log.debug('hello');
@@ -54,7 +54,7 @@ describe('e2e', () => {
 
     const sessionlessSource = new DataApi({
       name: 'sessionless',
-      api: {
+      sources: {
         async doNothing({ log }, param: boolean) {
           // @ts-expect-error should not have access to session
           log.debug(JSON.stringify(session));
@@ -66,7 +66,7 @@ describe('e2e', () => {
     const source2 = new DataApi({
       name: 'source2',
       session: sessionParent,
-      api: {
+      sources: {
         async getParentState({ session }, arg: boolean) {
           await new Promise((resolve) => setTimeout(resolve, 30));
           return { ...session.getState(), arg };
@@ -77,7 +77,7 @@ describe('e2e', () => {
     const target1 = new DataApi({
       name: 'target1',
       session: sessionChild,
-      api: {
+      targets: {
         async uploadStates(_, args: any) {
           result = args;
           cb();

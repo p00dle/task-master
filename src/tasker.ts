@@ -21,7 +21,7 @@ import { TaskerOptions } from './types/tasker-options';
 export interface TaskerStatus {
   credentials: CredentialsStatus[];
   sessions: HttpSessionStatusData[];
-  apis: (DataApiStatus<any> & { apiType?: 'source' | 'target' })[];
+  apis: DataApiStatus<any, any>[];
   tasks: TaskStatus[];
 }
 
@@ -38,8 +38,8 @@ export class Tasker extends UtilityClass<TaskerStatus> {
   protected credentials = {} as Record<string, Credentials>;
   protected dependencies = {} as Record<string, any>;
   protected sessions = {} as Record<string, Session<any, any, any>>;
-  protected sources = {} as Record<string, DataApi<any, any>>;
-  protected targets = {} as Record<string, DataApi<any, any>>;
+  protected sources = {} as Record<string, DataApi<any, any, any>>;
+  protected targets = {} as Record<string, DataApi<any, any, any>>;
   protected tasks = {} as Record<string, Task<any, any, any>>;
   protected statusTypeListeners = [] as StatusTypeListener<any>[];
   protected status: TaskerStatus;
@@ -145,18 +145,18 @@ export class Tasker extends UtilityClass<TaskerStatus> {
     this.tasks[task.name] = task;
     task.register(this.logger.namespace('Task').namespace(task.name));
     if (task.sources) {
-      for (const api of Object.values(task.sources) as DataApi<any, any>[]) {
+      for (const api of Object.values(task.sources) as DataApi<any, any, any>[]) {
         this.registerApi('sources', api);
       }
     }
     if (task.targets) {
-      for (const api of Object.values(task.targets) as DataApi<any, any>[]) {
+      for (const api of Object.values(task.targets) as DataApi<any, any, any>[]) {
         this.registerApi('targets', api);
       }
     }
   }
 
-  protected registerApi(type: 'sources' | 'targets', api: DataApi<any, any>) {
+  protected registerApi(type: 'sources' | 'targets', api: DataApi<any, any, any>) {
     if (this[type][api.name]) {
       if (this[type][api.name] !== api) {
         throw TypeError(
@@ -206,9 +206,6 @@ export class Tasker extends UtilityClass<TaskerStatus> {
             }
           }
           const isApi = type === 'sources' || type === 'targets';
-          if (isApi) {
-            (status as DataApiStatus<any>).apiType = type === 'sources' ? 'source' : 'target';
-          }
           const aliasType = isApi ? 'apis' : type;
           const index = this.status[aliasType].findIndex((x: { name: string }) => x.name === status.name);
           if (index >= 0) {
