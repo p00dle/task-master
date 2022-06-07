@@ -1,7 +1,8 @@
 import type { TaskerLogger } from './types/logger';
+import type { Dependency, DependencyType } from './types/dependency';
+
 import { UtilityClass } from './lib/UtilityClass';
 import { noOpLogger } from './lib/noOpLogger';
-import { Dependency } from './types/dependency';
 
 type DependencyTypes<D> = D extends Record<string, Dependency<any>>
   ? {
@@ -10,7 +11,10 @@ type DependencyTypes<D> = D extends Record<string, Dependency<any>>
   : never;
 
 type DataApiDeps<D> = D extends Record<string, Dependency<any>>
-  ? { log: TaskerLogger } & DependencyTypes<D>
+  ? {
+      log: TaskerLogger;
+      requestResource: <R extends keyof D>(resource: R) => Promise<D[R] extends Dependency<infer X> ? X : never>;
+    }
   : { log: TaskerLogger };
 
 export type DataApiFunc<D, A, T> = (dependencies: DataApiDeps<D>, args: A) => Promise<T>;
@@ -31,6 +35,7 @@ type DataApiFuncReturn<F> = F extends (...args: any[]) => Promise<infer X> ? X :
 export interface DataApiOptions<D, T extends DataApiOptionsType<D>, T2 extends DataApiOptionsType<D>> {
   name: string;
   dependencies?: D;
+  resourceRequestTimeoutMs?: number;
   sources?: T;
   targets?: T2;
 }
@@ -121,25 +126,30 @@ export class DataApi<
     apiFn: (deps: DataApiDeps<D>, params: P) => Promise<R>,
     params: P
   ): Promise<R> {
-    const dependencies = {} as DependencyTypes<D>;
+    const requestedResources: DependencyType[] = [];
+    const requestResource = async <R extends keyof DependencyTypes<D> & keyof D>(
+      resource: R,
+      timeoutMs?: number
+    ): Promise<DependencyTypes<D>[R]> => {
+      if (!this.dependencies || !this.dependencies[resource])
+        throw new Error(`Dependency ${String(resource)} not registered`);
+      const requestedResource = await this.dependencies[resource].requestResource(
+        timeoutMs || this.dependencies[resource].defaultTimeoutMs
+      );
+      requestedResources.push(requestedResource);
+      return requestedResource;
+    };
     let err: any = null;
     let result: R | undefined = undefined;
     try {
-      if (this.dependencies) {
-        for (const dep of Object.keys(this.dependencies) as (keyof D)[]) {
-          dependencies[dep as keyof DependencyTypes<D>] = await this.dependencies[dep].requestResource();
-        }
-        this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
-        result = await apiFn({ log: this.logger, ...dependencies } as DataApiDeps<D>, params);
-      } else {
-        this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
-        result = await apiFn({ log: this.logger } as DataApiDeps<D>, params);
-      }
+      this.changeStatus({ status: 'In Use', inQueue: this.status.inQueue + 1 });
+      const apiFnDeps = this.dependencies ? { log: this.logger, requestResource } : { log: this.logger };
+      result = await apiFn(apiFnDeps as DataApiDeps<D>, params);
     } catch (error) {
       err = error;
     } finally {
-      for (const dep of Object.keys(dependencies) as (keyof DependencyTypes<D>)[]) {
-        if (!dependencies[dep].wasReleased) await dependencies[dep].release();
+      for (const resource of requestedResources) {
+        if (!resource.wasReleased) await resource.release();
       }
       if (isSource) {
         this.changeStatus({

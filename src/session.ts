@@ -18,6 +18,7 @@ export interface SessionOptions<S, P, C> {
   name: string;
   parentSession?: P;
   credentials?: C;
+  sessionRequestTimeoutMs?: number;
   params?: HttpSessionOptions<
     S,
     { log: TaskerLogger } & ([P] extends [Session<infer X, any, any>]
@@ -28,6 +29,8 @@ export interface SessionOptions<S, P, C> {
   >;
 }
 
+const DEFAULT_SESSION_REQUEST_TIMEOUT_MS = 60_000;
+
 export class Session<S, P extends Session<any, any, any> | void, C extends Credentials | void>
   extends UtilityClass<HttpSessionStatusData>
   implements Dependency<HttpSessionObject<S>>
@@ -37,6 +40,7 @@ export class Session<S, P extends Session<any, any, any> | void, C extends Crede
   public logger: TaskerLogger = noOpLogger;
   public parentSession?: P;
   public credentials?: C;
+  public defaultTimeoutMs: number;
   protected session: HttpSession<S, any, any> | null = null;
   protected sessionOptions: HttpSessionOptions<S, any, any> | undefined;
   protected parentSessionMap = new Map<symbol, HttpSessionObject<any>>();
@@ -46,6 +50,7 @@ export class Session<S, P extends Session<any, any, any> | void, C extends Crede
     this.parentSession = options.parentSession;
     this.credentials = options.credentials;
     this.sessionOptions = options.params;
+    this.defaultTimeoutMs = options.sessionRequestTimeoutMs || DEFAULT_SESSION_REQUEST_TIMEOUT_MS;
   }
 
   public register(logger: TaskerLogger, logHttpRequests: boolean) {

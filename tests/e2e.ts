@@ -46,7 +46,8 @@ describe('e2e', () => {
         session: sessionChild,
       },
       sources: {
-        async getChildState({ session, log }, arg: number) {
+        async getChildState({ requestResource, log }, arg: number) {
+          const session = await requestResource('session');
           await new Promise((resolve) => setTimeout(resolve, 30));
           log.debug('hello');
           return { ...session.getState(), arg };
@@ -71,7 +72,8 @@ describe('e2e', () => {
         session: sessionParent,
       },
       sources: {
-        async getParentState({ session }, arg: boolean) {
+        async getParentState({ requestResource }, arg: boolean) {
+          const session = await requestResource('session');
           await new Promise((resolve) => setTimeout(resolve, 30));
           return { ...session.getState(), arg };
         },
@@ -87,7 +89,8 @@ describe('e2e', () => {
         store: memoryStore,
       },
       sources: {
-        async getStates({ store }) {
+        async getStates({ requestResource }) {
+          const store = await requestResource('store');
           return {
             src1: store.get('src1'),
             src2: store.get('src2'),
@@ -95,7 +98,8 @@ describe('e2e', () => {
         },
       },
       targets: {
-        async uploadStates({ store }, { src1, src2 }: { src1: any; src2: any }) {
+        async uploadStates({ requestResource }, { src1, src2 }: { src1: any; src2: any }) {
+          const store = await requestResource('store');
           store.set('src1', src1);
           store.set('src2', src2);
         },
