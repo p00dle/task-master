@@ -35,7 +35,7 @@ export class Task<
   protected forcedStop = false;
   protected isOneOff: boolean;
   protected rejectPromises: (() => any)[] = [];
-
+  protected preserveState: boolean;
   protected stepParams: StepTaskArg<S, T, L> = {
     state: {} as L,
     setTargetLastUpdated: (target, path, date) => {
@@ -87,7 +87,7 @@ export class Task<
 
   constructor(options: TaskOptions<S, T, L>) {
     super();
-    const { schedule, interval, continueInterval, retry } = options;
+    const { schedule, interval, continueInterval, retry, preserveState } = options;
     this.name = options.name;
     this.steps = options.steps;
     this.sources = options.sources as S;
@@ -108,6 +108,7 @@ export class Task<
     if (isConIntervalNum) this.continueInterval = continueInterval;
     if (isRetryNum) this.retry = retry;
     this.isOneOff = !isScheduleStr && !isintervalNum;
+    this.preserveState = preserveState === undefined ? false : preserveState;
     this.status = {
       name: this.name,
       status: 'Ready',
@@ -163,7 +164,8 @@ export class Task<
     }
     this.logger.debug('Task started');
     this.changeStatus({ status: 'Running', step: null, lastError: null, error: null });
-    const output = await asyncRetry(() => this.runSteps(), this.retry, this.logger.error.bind(this.logger));
+    const output = await asyncRetry(this.runSteps.bind(this), this.retry, this.logger.error.bind(this.logger));
+    if (!this.preserveState) this.stepParams.state = {} as L;
     if (this.status.status === 'Error') {
       this.logger.debug('Task failed');
     } else {

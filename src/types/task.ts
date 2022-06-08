@@ -66,6 +66,7 @@ export interface TaskOptions<
   schedule?: string;
   interval?: number;
   continueInterval?: number;
+  preserveState?: boolean;
   retry?: number;
 }
 
