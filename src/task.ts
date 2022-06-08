@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import type { StepFn, StepTaskArg, TaskOptions, TaskStatus } from './types/task';
+import type { CronTask, StepFn, StepTaskArg, TaskOptions, TaskStatus } from './types/task';
 
-import cron, { ScheduledTask } from 'node-cron';
+import cron from 'node-cron';
 import { asyncRetry } from './lib/asyncRetry';
 import { parseError } from './lib/parseError';
 import { UtilityClass } from './lib/UtilityClass';
@@ -26,7 +26,7 @@ export class Task<
   public targets: T;
   public sources: S;
   protected steps: StepFn<S, T, L>[];
-  protected cronTask: ScheduledTask | null = null;
+  protected cronTask: CronTask | null = null;
   protected interval: number | null = null;
   protected continueInterval: number | null = null;
   protected useInterval = false;

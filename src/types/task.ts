@@ -78,3 +78,8 @@ export interface TaskStatus {
   lastError: number | null;
   error: string | null;
 }
+
+export interface CronTask {
+  start: () => any;
+  stop: () => any;
+}
