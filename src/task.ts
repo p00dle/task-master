@@ -38,25 +38,25 @@ export class Task<
   protected preserveState: boolean;
   protected stepParams: StepTaskArg<S, T, L> = {
     state: {} as L,
-    setTargetLastUpdated: (target, path, date) => {
+    setTargetLastUpdated: (target, date) => {
       if (!this.targets || !this.targets[target])
         throw new TypeError(`Target ${String(target)} not provided as a dependency`);
-      this.targets[target].setTargetLastUpdated(path as string, date);
+      this.targets[target].setTargetLastUpdated(date);
     },
-    setSourceLastUpdated: (source, path, date) => {
+    setSourceLastUpdated: (source, date) => {
       if (!this.sources || !this.sources[source])
         throw new TypeError(`Source ${String(source)} not provided as a dependency`);
-      this.sources[source].setSourceLastUpdated(path as string, date);
+      this.sources[source].setSourceLastUpdated(date);
     },
-    getTargetLastUpdated: (target, path) => {
+    getTargetLastUpdated: (target) => {
       if (!this.targets || !this.targets[target])
         throw new TypeError(`Target ${String(target)} not provided as a dependency`);
-      return this.targets[target].getTargetLastUpdated(path as string);
+      return this.targets[target].getTargetLastUpdated();
     },
-    getSourceLastUpdated: (source, path) => {
+    getSourceLastUpdated: (source) => {
       if (!this.sources || !this.sources[source])
         throw new TypeError(`Source ${String(source)} not provided as a dependency`);
-      return this.sources[source].getSourceLastUpdated(path as string);
+      return this.sources[source].getSourceLastUpdated();
     },
     getFromSource: <N extends keyof S, P extends keyof S[N]['sources'], X extends Parameters<S[N]['sources'][P]>[1]>(
       source: N,

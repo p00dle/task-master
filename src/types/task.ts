@@ -10,24 +10,10 @@ export interface StepTaskArg<
   L
 > {
   state: L;
-  setTargetLastUpdated: <N extends keyof T, P extends keyof TargetDataApiType<T[N]>>(
-    dataSourceName: N,
-    path: P,
-    date: number | null
-  ) => void;
-  setSourceLastUpdated: <N extends keyof S, P extends keyof SourceDataApiType<S[N]>>(
-    dataSourceName: N,
-    path: P,
-    date: number | null
-  ) => void;
-  getTargetLastUpdated: <N extends keyof T, P extends keyof TargetDataApiType<T[N]>>(
-    dataSourceName: N,
-    path: P
-  ) => number | null;
-  getSourceLastUpdated: <N extends keyof S, P extends keyof SourceDataApiType<S[N]>>(
-    dataSourceName: N,
-    path: P
-  ) => number | null;
+  setTargetLastUpdated: <N extends keyof T>(dataSourceName: N, date: number | null) => void;
+  setSourceLastUpdated: <N extends keyof S>(dataSourceName: N, date: number | null) => void;
+  getTargetLastUpdated: <N extends keyof T>(dataSourceName: N) => number | null;
+  getSourceLastUpdated: <N extends keyof S>(dataSourceName: N) => number | null;
   getFromSource: <N extends keyof S, P extends keyof S[N]['sources']>(
     source: N,
     path: P,

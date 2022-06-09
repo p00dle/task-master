@@ -21,7 +21,7 @@ import { TaskerOptions } from './types/tasker-options';
 export interface TaskerStatus {
   credentials: CredentialsStatus[];
   sessions: HttpSessionStatusData[];
-  apis: DataApiStatus<any, any>[];
+  apis: DataApiStatus[];
   tasks: TaskStatus[];
 }
 
@@ -165,7 +165,7 @@ export class Tasker extends UtilityClass<TaskerStatus> {
       }
     }
     this[type][api.name] = api;
-    api.register(this.logger.namespace(type === 'sources' ? 'Source' : 'Target').namespace(api.name));
+    api.register(type, this.logger.namespace(type === 'sources' ? 'Source' : 'Target').namespace(api.name));
     if (api.dependencies) {
       for (const dep of Object.values(api.dependencies)) {
         if (dep instanceof Session) this.registerSession(dep);

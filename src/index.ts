@@ -12,8 +12,3 @@ export const tasker = {
 };
 
 export { Task, DataApi, Session, Credentials, MemoryStore, HttpSessionRequest, HttpSessionObject, HttpSessionOptions };
-
-/*
-TODO:
-- register dependencies for logging and status updates; will need another tab in the client and a uniform interface for status (maybe re-use session's)
-*/

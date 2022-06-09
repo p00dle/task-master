@@ -19,14 +19,16 @@ type DataApiDeps<D> = D extends Record<string, Dependency<any>>
 
 export type DataApiFunc<D, A, T> = (dependencies: DataApiDeps<D>, args: A) => Promise<T>;
 
-export interface DataApiStatus<T, T2> {
+export interface DataApiStatus {
+  usedAsSource: boolean;
+  usedAsTarget: boolean;
   name: string;
   status: 'In Use' | 'Ready';
   inQueue: number;
-  sourcesLastUpdated: Record<keyof T, number | null>;
-  sourcesLastTouched: Record<keyof T, number | null>;
-  targetsLastUpdated: Record<keyof T2, number | null>;
-  targetsLastTouched: Record<keyof T2, number | null>;
+  sourceLastUpdated: number | null;
+  sourceLastTouched: number | null;
+  targetLastUpdated: number | null;
+  targetLastTouched: number | null;
 }
 
 type DataApiFuncParams<F> = F extends (deps: any, arg: infer X) => any ? X : never;
@@ -48,9 +50,9 @@ export class DataApi<
   D extends Record<string, Dependency<any>>,
   T extends DataApiOptionsType<D>,
   T2 extends DataApiOptionsType<D>
-> extends UtilityClass<DataApiStatus<T, T2>> {
+> extends UtilityClass<DataApiStatus> {
   public name: string;
-  public status: DataApiStatus<T, T2>;
+  public status: DataApiStatus;
   public logger: TaskerLogger = noOpLogger;
   public dependencies?: D;
   public sources: T;
@@ -62,49 +64,37 @@ export class DataApi<
     this.sources = options.sources as T;
     this.targets = options.targets as T2;
     this.status = {
+      usedAsSource: false,
+      usedAsTarget: false,
       name: this.name,
-      sourcesLastTouched: {} as Record<keyof T, number | null>,
-      sourcesLastUpdated: {} as Record<keyof T, number | null>,
-      targetsLastTouched: {} as Record<keyof T2, number | null>,
-      targetsLastUpdated: {} as Record<keyof T2, number | null>,
+      sourceLastTouched: null,
+      sourceLastUpdated: null,
+      targetLastTouched: null,
+      targetLastUpdated: null,
       status: 'Ready',
       inQueue: 0,
     };
-    if (this.sources) {
-      for (const name of Object.keys(this.sources) as (keyof T)[]) {
-        this.status.sourcesLastTouched[name] = null;
-        this.status.sourcesLastUpdated[name] = null;
-      }
-    }
-    if (this.targets) {
-      for (const name of Object.keys(this.targets) as (keyof T2)[]) {
-        this.status.targetsLastTouched[name] = null;
-        this.status.targetsLastUpdated[name] = null;
-      }
-    }
   }
 
-  public register(logger: TaskerLogger) {
+  public register(usedAs: 'sources' | 'targets', logger: TaskerLogger) {
     this.logger = logger;
+    if (usedAs === 'sources') this.changeStatus({ usedAsSource: true });
+    else this.changeStatus({ usedAsTarget: true });
   }
-  public setSourceLastUpdated(path: keyof T, date: number | null) {
-    this.logger.debug(
-      `Source ${String(path)} last updated set to ${typeof date === 'number' ? new Date(date).toString() : 'null'}`
-    );
-    this.changeStatus({ sourcesLastUpdated: { ...this.status.sourcesLastUpdated, [path]: date } });
+  public setSourceLastUpdated(date: number | null) {
+    this.logger.debug(`Source last updated set to ${typeof date === 'number' ? new Date(date).toString() : 'null'}`);
+    this.changeStatus({ sourceLastUpdated: date });
   }
-  public getSourceLastUpdated(path: keyof T): number | null {
-    return this.status.sourcesLastUpdated[path];
+  public getSourceLastUpdated(): number | null {
+    return this.status.sourceLastUpdated;
   }
 
-  public setTargetLastUpdated(path: keyof T2, date: number | null) {
-    this.logger.debug(
-      `Target ${String(path)} last updated set to ${typeof date === 'number' ? new Date(date).toString() : 'null'}`
-    );
-    this.changeStatus({ targetsLastUpdated: { ...this.status.targetsLastUpdated, [path]: date } });
+  public setTargetLastUpdated(date: number | null) {
+    this.logger.debug(`Target last updated set to ${typeof date === 'number' ? new Date(date).toString() : 'null'}`);
+    this.changeStatus({ targetLastUpdated: date });
   }
-  public getTargetLastUpdated(path: keyof T2): number | null {
-    return this.status.targetsLastUpdated[path];
+  public getTargetLastUpdated(): number | null {
+    return this.status.targetLastUpdated;
   }
 
   public callSourceApi<K extends keyof T>(path: K, params: DataApiFuncParams<T[K]>): Promise<DataApiFuncReturn<T[K]>> {
@@ -155,13 +145,13 @@ export class DataApi<
         this.changeStatus({
           status: this.status.inQueue === 1 ? 'Ready' : 'In Use',
           inQueue: this.status.inQueue - 1,
-          sourcesLastTouched: { ...this.status.sourcesLastTouched, [path]: Date.now() },
+          sourceLastTouched: Date.now(),
         });
       } else {
         this.changeStatus({
           status: this.status.inQueue === 1 ? 'Ready' : 'In Use',
           inQueue: this.status.inQueue - 1,
-          targetsLastTouched: { ...this.status.targetsLastTouched, [path]: Date.now() },
+          targetLastTouched: Date.now(),
         });
       }
     }
