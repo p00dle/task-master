@@ -6,14 +6,16 @@ import { noOpLogger } from './lib/noOpLogger';
 
 type DependencyTypes<D> = D extends Record<string, Dependency<any>>
   ? {
-      [K in keyof D]: D[K] extends Dependency<infer X> ? X : never;
+      [K in keyof D]: D[K] extends { requestResource: () => Promise<infer X> } ? X : never;
     }
   : never;
 
 type DataApiDeps<D> = D extends Record<string, Dependency<any>>
   ? {
       log: TaskerLogger;
-      requestResource: <R extends keyof D>(resource: R) => Promise<D[R] extends Dependency<infer X> ? X : never>;
+      requestResource: <R extends keyof D>(
+        resource: R
+      ) => Promise<D[R] extends { requestResource: () => Promise<infer X> } ? X : never>;
     }
   : { log: TaskerLogger };
 
