@@ -20,7 +20,7 @@ export function createGuiServer(
     if (tasker.isShutdown) {
       server.close();
     } else {
-      tasker.logger.info(`Server started; GUI available at http://localhost:${guiPort}`);
+      console.info(`Server started; GUI available at http://localhost:${guiPort}`);
       if (openInBrowser) openBrowser(`http://localhost:${guiPort}`);
     }
   });

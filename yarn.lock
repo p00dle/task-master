@@ -566,10 +566,10 @@
   resolved "https://registry.yarnpkg.com/@kksiuda/csv/-/csv-0.9.9.tgz#447fcdbfea4f887e68b1e1ba0416663b31c058f3"
   integrity sha512-CI2VV3Y6ZWzCsQk30GgkM5MZa5P5dEiGpLcvBrR65cSc71TVmRuq+nmpxIVa1AyJQEgZG63YESEXgeHI9+zydA==
 
-"@kksiuda/http-session@^0.9.51":
-  version "0.9.51"
-  resolved "https://registry.yarnpkg.com/@kksiuda/http-session/-/http-session-0.9.51.tgz#b63eb6f53b3fce9980f7eb4444d3ced11c40145f"
-  integrity sha512-COWQ4n+LkoYyo13147LvEI34wmT97/LgmjuM9hB+sx5CVYNsLO6WyQZLQzE04RMrwzfpaK3DWWEBw4uSljn5Zw==
+"@kksiuda/http-session@^0.9.52":
+  version "0.9.52"
+  resolved "https://registry.yarnpkg.com/@kksiuda/http-session/-/http-session-0.9.52.tgz#26c10153313da9f01519ba57eca53512fbfcb275"
+  integrity sha512-Rs9xQq3li4W57UXkOSkjV96hE1C4Sol4k6Q5qE5PGcw9DN7IRFAxBHJxsO+CK18BPwsOlQCUHkDdRQfj3aqmGw==
 
 "@kksiuda/logger@^0.2.4":
   version "0.2.4"
@@ -3047,7 +3047,7 @@ negotiator@0.6.3:
   resolved "https://registry.yarnpkg.com/negotiator/-/negotiator-0.6.3.tgz#58e323a72fedc0d6f9cd4d31fe49f51479590ccd"
   integrity sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==
 
-node-cron@^3.0.0:
+node-cron@3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/node-cron/-/node-cron-3.0.0.tgz#b33252803e430f9cd8590cf85738efa1497a9522"
   integrity sha512-DDwIvvuCwrNiaU7HEivFDULcaQualDv7KoNlB/UU1wPW0n1tDEmBJKhEIE6DlF2FuoOHcNbLJ8ITL2Iv/3AWmA==
