@@ -3,6 +3,8 @@ import type { Dependency, DependencyType } from './types/dependency';
 
 import { UtilityClass } from './lib/UtilityClass';
 import { noOpLogger } from './lib/noOpLogger';
+import { isReadableStream } from './lib/isReadableStream';
+import { Readable } from 'node:stream';
 
 type DependencyTypes<D> = D extends Record<string, Dependency<any>>
   ? {
@@ -141,7 +143,12 @@ export class DataApi<
       err = error;
     } finally {
       for (const resource of requestedResources) {
-        if (!resource.wasReleased) await resource.release();
+        if (!resource.wasReleased) {
+          if (isReadableStream(result)) {
+            await new Promise((resolve) => (result as unknown as Readable).on('close', resolve));
+          }
+          await resource.release();
+        }
       }
       if (isSource) {
         this.changeStatus({
