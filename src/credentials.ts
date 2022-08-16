@@ -41,8 +41,9 @@ export class Credentials extends UtilityClass<CredentialsStatus> {
 
   public register(logger: TaskerLogger) {
     this.logger = logger;
-    if (this.envUsername) this.credentials.username = process.env[this.envUsername] || null;
-    if (this.envPassword) this.credentials.password = process.env[this.envPassword] || null;
+    if (this.envUsername && this.envPassword) {
+      this.setCredentials({ username: this.envUsername, password: this.envPassword });
+    }
   }
 
   public getCredentials(): CredentialsData {
