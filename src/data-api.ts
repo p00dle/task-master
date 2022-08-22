@@ -145,9 +145,13 @@ export class DataApi<
       for (const resource of requestedResources) {
         if (!resource.wasReleased) {
           if (isReadableStream(result)) {
-            await new Promise((resolve) => (result as unknown as Readable).on('close', resolve));
+            const stream = result as unknown as Readable;
+            const releaseResource = () => resource.release();
+            stream.on('close', releaseResource);
+            stream.on('error', releaseResource);
+          } else {
+            await resource.release();
           }
-          await resource.release();
         }
       }
       if (isSource) {
