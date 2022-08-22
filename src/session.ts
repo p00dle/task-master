@@ -44,6 +44,7 @@ export class Session<S, P extends Session<any, any, any> | void, C extends Crede
   protected session: HttpSession<S, any, any> | null = null;
   protected sessionOptions: HttpSessionOptions<S, any, any> | undefined;
   protected parentSessionMap = new Map<symbol, HttpSessionObject<any>>();
+  protected sessionStateBeforeRegister?: Partial<S>;
   constructor(options: SessionOptions<S, P, C>) {
     super();
     this.name = options.name;
@@ -61,6 +62,7 @@ export class Session<S, P extends Session<any, any, any> | void, C extends Crede
       logger: logHttpRequests ? this.logger : noOpLogger,
       name: this.name,
       ...this.sessionOptions,
+      state: this.sessionStateBeforeRegister as S,
     });
     this.session.onStatus(this.changeStatus.bind(this));
   }
@@ -69,6 +71,7 @@ export class Session<S, P extends Session<any, any, any> | void, C extends Crede
     this.logger.debug('Shutting session down');
     await (this.session as HttpSession<S, any, any>).shutdown();
     this.logger.debug('Session shutdown');
+    this.clearAllTimeouts();
   }
 
   public async requestResource() {
@@ -101,6 +104,8 @@ export class Session<S, P extends Session<any, any, any> | void, C extends Crede
   public setState(state: Partial<S>) {
     if (this.session) {
       this.session.setState(state);
+    } else {
+      this.sessionStateBeforeRegister = state;
     }
   }
 
