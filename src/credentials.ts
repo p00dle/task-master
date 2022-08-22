@@ -33,7 +33,7 @@ export class Credentials extends UtilityClass<CredentialsStatus> {
     this.status = {
       status: 'Not Provided',
       name: this.name,
-      username: this.credentials.username,
+      username: null,
       hasPassword: false,
       valid: null,
     };
@@ -41,8 +41,12 @@ export class Credentials extends UtilityClass<CredentialsStatus> {
 
   public register(logger: TaskerLogger) {
     this.logger = logger;
-    if (this.envUsername && this.envPassword) {
-      this.setCredentials({ username: this.envUsername, password: this.envPassword });
+    if (this.envUsername) {
+      const username = process.env[this.envUsername] || this.credentials.username;
+      const password = process.env[this.envPassword as string] || this.credentials.password;
+      if (username) {
+        this.setCredentials({ username, password });
+      }
     }
   }
 
