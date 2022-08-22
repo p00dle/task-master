@@ -159,6 +159,7 @@ export class LogStore {
     this.logsSize = this.logsSize.slice(removeCount);
     if (reduced >= targetReduction) return;
   }
+
   public addLog(log: Log) {
     this.logs.push(log);
     const size = getApproximateLogSizeBytes(log);
@@ -205,6 +206,7 @@ export class NoOpLogStore extends LogStore {
   protected archiveAfterMs = 0;
   protected retainArchivedLogs = false;
   protected archiveIntervalMs = 0;
+
   constructor() {
     super({
       useArchive: false,
@@ -215,18 +217,23 @@ export class NoOpLogStore extends LogStore {
       memoryPurgeRatio: 0,
     });
   }
+
   public get(): Log[] {
     return [];
   }
+
   public forceStop() {
     //
   }
+
   public addLog(_log: Log) {
     //
   }
+
   public subscribe(_params: GetLogsParams, _listener: LogListener): Unsubscribe {
     return () => undefined;
   }
+
   public getCsvStream(): Readable {
     return new Readable({
       read() {
@@ -235,6 +242,7 @@ export class NoOpLogStore extends LogStore {
       },
     });
   }
+
   protected archiveLogs() {
     //
   }
