@@ -1,3 +1,4 @@
+import { DataApi } from './data-api';
 import { Dependency } from './types/dependency';
 
 interface MemoryStoreObject<T> {
@@ -25,4 +26,25 @@ export class MemoryStore<T extends Record<string, any>> implements Dependency<Me
       wasReleased: false,
     };
   }
+}
+
+export function createMemoryDataApi<T extends Record<string, any>>(name: string, initialState: T) {
+  return new DataApi({
+    name,
+    dependencies: {
+      store: new MemoryStore(initialState),
+    },
+    sources: {
+      async get({ requestResource }, key: keyof T) {
+        const store = await requestResource('store');
+        return store.get(key);
+      },
+    },
+    targets: {
+      async set({ requestResource }, { key, value }: { key: keyof T; value: T[typeof key] }) {
+        const store = await requestResource('store');
+        store.set(key, value);
+      },
+    },
+  });
 }
