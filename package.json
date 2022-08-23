@@ -1,6 +1,6 @@
 {
   "name": "@kksiuda/tasker",
-  "version": "0.3.23",
+  "version": "0.3.24",
   "description": "Task framework for ETL with HTTP session support",
   "main": "./dist/index.js",
   "author": "Krzysztof Siuda",
